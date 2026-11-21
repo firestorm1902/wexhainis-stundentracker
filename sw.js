@@ -1,8 +1,8 @@
 // Bei jeder Änderung der App hier VERSION und in index.html APP_VERSION hochzählen
-const VERSION = '1.3.4';
+const VERSION = '1.3.5';
 const C = 'stundentracker-' + VERSION;
 const HOSTS = ['www.gstatic.com', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
-const SHELL = ['./', './index.html', './manifest.webmanifest?v=1.3.4', './icon.svg?v=2', './icon-192.png?v=2', './icon-512.png?v=2', './maskable-192.png?v=2', './maskable-512.png?v=2', './apple-touch-icon.png?v=2', './favicon-32.png?v=2'];
+const SHELL = ['./', './index.html', './manifest.webmanifest?v=1.3.5', './icon.svg?v=3', './icon-192.png?v=3', './icon-512.png?v=3', './maskable-192.png?v=3', './maskable-512.png?v=3', './apple-touch-icon.png?v=3', './favicon-32.png?v=3'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(C).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => {})))).then(() => self.skipWaiting()));
