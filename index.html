@@ -178,9 +178,9 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
     <div id="admMg" hidden>
     <div class="card">
       <h2>Mitglieder und Rechte</h2>
-      <small class="mut">Die Konten sind dieselben wie in der Getränke-Strichliste, die Rollen sind getrennt: Getränke-Admins haben hier keine Rechte, Stunden-Admins keine in der Strichliste. Der Stundentracker braucht eine eigene Freigabe.</small>
+      <small class="mut">Hier werden nur die Rechte für den Stundentracker vergeben. Konten freischalten, umbenennen und sperren geschieht in der Getränke-Strichliste. Getränke-Admins haben hier keine Rechte, Stunden-Admins keine in der Strichliste.</small>
       <label for="uf">Anzeigen</label>
-      <select id="uf"><option value="">Alle</option><option value="wait">Wartende Konten</option><option value="nostd">Ohne Freigabe für den Stundentracker</option><option value="std">Mit Freigabe</option></select>
+      <select id="uf"><option value="">Alle</option><option value="nostd">Ohne Freigabe für den Stundentracker</option><option value="std">Mit Freigabe</option></select>
     </div>
     <div id="ml"></div>
     </div>
@@ -242,7 +242,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -282,7 +282,7 @@ const GATE = {
   noprofile: ['Profil fehlt', 'Für dieses Konto gibt es noch kein Profil. Lege es mit deinem Namen an.'],
   removed: ['Konto entfernt', 'Dieses Konto wurde entfernt. Bitte melde dich beim Vorstand.'],
   blocked: ['Konto gesperrt', 'Dein Konto ist gesperrt. Bitte melde dich beim Vorstand.'],
-  pending: ['Warten auf Freischaltung', 'Dein Konto ist angelegt und wartet auf die Freischaltung durch den Super-Admin.'],
+  pending: ['Warten auf Freischaltung', 'Dein Konto ist angelegt und wartet auf die Freischaltung. Bitte melde dich beim Vorstand.'],
   nostd: ['Noch nicht freigegeben', 'Dein Konto ist für den Stundentracker noch nicht freigegeben. Bitte melde dich beim Super-Admin.']
 };
 
@@ -371,7 +371,7 @@ function syncRows() {
   // Mitglieder lesen nur eigene Dokumente, Vorstand und Admins alle
   const q = name => canAll() ? F.collection(db, name) : F.query(F.collection(db, name), F.where('uid', '==', S.user.uid));
   const docs = snap => snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
-  unsub.rows = F.onSnapshot(q('stunden'), snap => { S.rows = docs(snap); S.dbError = ''; render(); }, fail('Stunden'));
+  unsub.rows = F.onSnapshot(q('stunden'), snap => { S.rows = docs(snap); S.dbError = ''; render(); if (!snap.metadata || !snap.metadata.fromCache) syncMyNames(); }, fail('Stunden'));
   unsub.cfg = F.onSnapshot(F.doc(db, 'stdcfg', 'main'), snap => { S.cfg = snap.exists() ? snap.data() : {}; render(); }, fail('Einstellungen'));
   unsub.soll = F.onSnapshot(q('stdsoll'), snap => { S.soll = docs(snap); render(); }, fail('Soll'));
   unsub.inv = F.onSnapshot(q('stdinv'), snap => { S.inv = docs(snap); render(); }, fail('Rechnungen'));
@@ -618,7 +618,7 @@ function renderAdm() {
 function renderMembers() {
   const f = $('uf').value, box = $('ml'); box.replaceChildren();
   const stat = {}; S.rows.forEach(e => { const s = stat[e.uid] || (stat[e.uid] = { n: 0, h: 0 }); s.n++; s.h += e.stunden; });
-  const list = S.users.filter(u => !u.deleted).filter(u => f === 'wait' ? u.pending : f === 'nostd' ? u.std !== true : f === 'std' ? u.std === true : true)
+  const list = S.users.filter(u => !u.deleted).filter(u => f === 'nostd' ? u.std !== true : f === 'std' ? u.std === true : true)
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'de'));
   if (!list.length) { box.append(el('p', 'mut', 'Keine Konten in dieser Auswahl.')); return; }
   list.forEach(u => {
@@ -632,7 +632,6 @@ function renderMembers() {
     tag(u.std === true ? 'Stundentracker: freigegeben' : 'Stundentracker: nicht freigegeben', u.std === true ? 'ok' : '');
     if (u.sr === 'admin') tag('Stunden-Admin', 'ok');
     if (u.sr === 'vorstand') tag('Vorstand', 'ok');
-    if (u.role) tag('Strichliste: ' + u.role);
     l.append(tags, el('small', 'mut', nf(s.h) + ' h · ' + s.n + (s.n === 1 ? ' Eintrag' : ' Einträge')));
     const b = el('button', 'ic', '⋯'); b.setAttribute('aria-label', 'Aktionen'); b.onclick = () => memberMenu(u);
     c.append(l, b); box.append(c);
@@ -640,19 +639,17 @@ function renderMembers() {
 }
 $('uf').onchange = renderMembers;
 async function memberMenu(u) {
-  // Super-Admin: alles. Stunden-Admin: Freigabe und Vorstand für bereits freigeschaltete Konten, nicht für Admins und nicht für sich selbst.
+  // Nur Stundentracker-Rechte. Konten freischalten, umbenennen und sperren geschieht in der Getränke-Strichliste.
+  // Super-Admin: Freigabe, Vorstand, Stunden-Admin. Stunden-Admin: Freigabe und Vorstand, nicht für Admins und nicht für sich selbst.
   const self = u.id === S.user.uid, sup = S.isSuper, adm = u.sr === 'admin', o = [];
-  if (sup || (!self && !adm && !u.pending)) o.push(u.pending ? 'Freigeben (Konto und Stundentracker)' : u.std === true ? 'Stundentracker-Zugang entziehen' : 'Stundentracker freigeben');
+  if (u.pending || u.blocked) { await ask((u.name || '') + ': Dieses Konto ist ' + (u.pending ? 'noch nicht freigeschaltet' : 'gesperrt') + '. Das wird in der Getränke-Strichliste verwaltet.', ['OK']); return; }
+  if (sup || (!self && !adm)) o.push(u.std === true ? 'Stundentracker-Zugang entziehen' : 'Stundentracker freigeben');
   if (!self && !adm) o.push(u.sr === 'vorstand' ? 'Vorstand entziehen' : 'Zum Vorstand machen');
   if (sup && !self) o.push(adm ? 'Stunden-Admin entziehen' : 'Zum Stunden-Admin machen');
-  if (sup) o.push('Umbenennen');
-  if (sup && !self) o.push(u.blocked ? 'Konto entsperren (beide Apps)' : 'Konto sperren (beide Apps)');
-  if (!o.length) { await ask((u.name || '') + ': Hier kannst du nichts ändern.' + (u.pending ? ' Das Konto wartet noch auf die Freischaltung durch den Super-Admin.' : adm ? ' Admins verwaltet nur der Super-Admin.' : ''), ['OK']); return; }
+  if (!o.length) { await ask((u.name || '') + ': Hier kannst du nichts ändern.' + (adm ? ' Admins verwaltet nur der Super-Admin.' : ''), ['OK']); return; }
   o.push('Schließen');
   const a = o[await ask((u.name || '') + (u.email ? ' (' + u.email + ')' : ''), o)], ref = F.doc(db, 'users', u.id);
-  if (a === 'Freigeben (Konto und Stundentracker)') {
-    if (await ask('Konto von ' + u.name + ' freigeben? Die Freischaltung gilt auch für die Getränke-Strichliste.', ['Freigeben', 'Abbrechen']) === 0) { fire(F.updateDoc(ref, { pending: false, std: true }), 'Freigeben'); toast('Freigegeben.'); }
-  } else if (a === 'Stundentracker freigeben') { fire(F.updateDoc(ref, { std: true }), 'Freigeben'); toast('Stundentracker freigegeben.'); }
+  if (a === 'Stundentracker freigeben') { fire(F.updateDoc(ref, { std: true }), 'Freigeben'); toast('Stundentracker freigegeben.'); }
   else if (a === 'Stundentracker-Zugang entziehen') { fire(F.updateDoc(ref, { std: false }), 'Zugang entziehen'); toast('Zugang entzogen.'); }
   else if (a === 'Zum Stunden-Admin machen') {
     if (await ask(u.name + ' zum Stunden-Admin machen? Er sieht, ändert und löscht dann alle Stunden und kann Mitglieder freigeben. In der Getränke-Strichliste ändert sich nichts.', ['Zum Admin machen', 'Abbrechen']) === 0) { fire(F.updateDoc(ref, { sr: 'admin', std: true }), 'Rolle'); toast('Jetzt Stunden-Admin.'); }
@@ -660,26 +657,19 @@ async function memberMenu(u) {
   else if (a === 'Stunden-Admin entziehen') { fire(F.updateDoc(ref, { sr: '' }), 'Rolle'); toast('Admin-Rolle entzogen.'); }
   else if (a === 'Zum Vorstand machen') { fire(F.updateDoc(ref, { sr: 'vorstand' }), 'Rolle'); toast('Jetzt Vorstand (sieht alle Einträge).'); }
   else if (a === 'Vorstand entziehen') { fire(F.updateDoc(ref, { sr: '' }), 'Rolle'); toast('Vorstandsrolle entzogen.'); }
-  else if (a === 'Umbenennen') {
-    const n = await askIn('Neuer Name für ' + u.name, 'Vor- und Nachname', u.name);
-    if (n && n.length >= 2 && n.length <= 40) await rename(u, n.replace(/\s+/g, ' '));
-    else if (n) toast('Der Name braucht 2 bis 40 Zeichen.');
-  } else if (a === 'Konto sperren (beide Apps)' || a === 'Konto entsperren (beide Apps)') {
-    const sp = a.startsWith('Konto sperren');
-    if (await ask((sp ? 'Konto von ' + u.name + ' sperren? Die Person kann dann auch die Getränke-Strichliste nicht mehr nutzen.' : 'Konto von ' + u.name + ' wieder freigeben?'), [sp ? 'Sperren' : 'Entsperren', 'Abbrechen']) === 0) { fire(F.updateDoc(ref, { blocked: sp }), 'Sperren'); toast(sp ? 'Konto gesperrt.' : 'Konto entsperrt.'); }
-  }
 }
-async function rename(u, name) {
-  try {
-    const snap = await F.getDocs(F.query(F.collection(db, 'stunden'), F.where('uid', '==', u.id)));
-    const b = F.writeBatch(db); let n = 0; const all = [];
-    b.update(F.doc(db, 'users', u.id), { name }); n++;
-    let cur = b;
-    snap.docs.forEach(d => { if (n >= 400) { all.push(cur); cur = F.writeBatch(db); n = 0; } cur.update(d.ref, { name }); n++; });
-    all.push(cur);
-    for (const x of all) await x.commit();
-    toast('Name geändert (auch in ' + snap.size + ' Einträgen).');
-  } catch (e) { toast('Umbenennen fehlgeschlagen: ' + (e.code || e.message)); }
+// Wird der Name in der Getränke-Strichliste geändert, übernehmen die eigenen Einträge ihn beim nächsten Öffnen
+const nameSynced = new Set();
+function syncMyNames() {
+  const n = S.meDoc && S.meDoc.name;
+  if (!n || access() !== 'ok') return;
+  const todo = S.rows.filter(e => e.uid === S.user.uid && e.name !== n && !nameSynced.has(e.id + n));
+  if (!todo.length) return;
+  for (let i = 0; i < todo.length; i += 400) {
+    const b = F.writeBatch(db);
+    todo.slice(i, i + 400).forEach(e => { nameSynced.add(e.id + n); b.update(F.doc(db, 'stunden', e.id), { name: n }); });
+    fire(b.commit(), 'Namen aktualisieren');
+  }
 }
 
 /* ---------- Pflichtstunden, Erinnerungen, Rechnungen ---------- */
