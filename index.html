@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Stunden" />
+<meta name="theme-color" content="#141414" />
+<meta name="format-detection" content="telephone=no" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="icon" href="./icon-192.png" type="image/png" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&display=swap" rel="stylesheet" />
+<title>Wexhainer Stundentracker</title>
+<style>
+:root{--bg:#f6f3ea;--ink:#141414;--mu:#5c574b;--line:#d8d1bf;--wy:#f5c000;--wy2:#fff2bf;--card:#fff;--pen:#c62828;--pet:#1f6b3b;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#121211;--ink:#f1ede2;--mu:#aaa392;--line:#3a372f;--card:#1e1d1a;--wy2:#3a3215;--pen:#ff7366;--pet:#6cc58a;color-scheme:dark}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:calc(58px + env(safe-area-inset-top,0px)) 14px calc(30px + env(safe-area-inset-bottom,0px))}
+main{max-width:640px;margin:0 auto}
+h1{font:700 1.35rem/1.2 Oswald,system-ui,sans-serif;margin:14px 0 2px;letter-spacing:.01em}
+h2{font:700 1.05rem/1.2 Oswald,system-ui,sans-serif;margin:0 0 10px}
+.mut{color:var(--mu)}small{font-size:.8rem}
+.ver{font-size:.75rem;color:var(--mu);margin:0 0 6px}
+nav{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;background:var(--card);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+nav button{flex:1;border:0;background:transparent;font:inherit;font-size:.9rem;color:var(--mu);padding:15px 2px;min-height:50px}
+nav button.on{color:var(--ink);font-weight:700;box-shadow:inset 0 -3px 0 var(--wy)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+label{display:block;font-size:.8rem;color:var(--mu);margin:10px 0 4px}
+input,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;min-height:46px}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;text-align:left;line-height:1.3}
+input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.3em;margin:0}
+input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
+.chk{display:flex;align-items:flex-start;color:var(--ink);font-size:.85rem;margin:12px 0 0}
+.btn{font:700 1rem Oswald,system-ui,sans-serif;letter-spacing:.02em;border:0;border-radius:12px;padding:12px 14px;min-height:48px;background:var(--wy);color:#141414;width:100%;margin-top:12px}
+.btn.sec{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500}
+.btn.dng{color:var(--pen)}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.tabs{display:flex;gap:8px;margin-bottom:6px}.tabs button{flex:1;padding:10px;border:1px solid var(--line);background:transparent;border-radius:10px;font:inherit;color:var(--mu)}.tabs button.on{background:var(--wy2);color:var(--ink);border-color:var(--wy);font-weight:700}
+.pw{position:relative}.pw input{padding-right:50px}.eye{position:absolute;right:2px;top:0;height:46px;width:46px;border:0;background:transparent;font-size:18px;color:var(--mu)}
+.mh{display:flex;justify-content:space-between;font-weight:700;margin:18px 2px 6px;font-family:Oswald,system-ui,sans-serif}
+.item{display:flex;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.il{display:flex;flex-direction:column;min-width:0}.il small{overflow-wrap:anywhere}
+.ir{display:flex;align-items:center;gap:2px;flex-shrink:0}.hrs{font-weight:700;margin-right:6px;white-space:nowrap}
+.ic{border:0;background:transparent;font-size:19px;padding:8px;min-width:40px;min-height:40px;color:var(--ink)}
+.tag{display:inline-block;font-size:.72rem;border:1px solid var(--line);border-radius:20px;padding:1px 8px;margin:2px 4px 0 0;color:var(--mu)}
+.tag.ok{color:var(--pet);border-color:var(--pet)}.tag.warn{color:var(--pen);border-color:var(--pen)}
+.err{background:var(--wy2);border:1px solid var(--wy);border-radius:10px;padding:10px 12px;margin:12px 0;font-size:.9rem}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:30}
+.modal>div{background:var(--card);border-radius:16px;padding:18px;width:100%;max-width:380px;max-height:90vh;overflow:auto}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
+</style>
+</head>
+<body>
+<nav id="nav" hidden>
+  <button data-v="new" class="on">Eintragen</button>
+  <button data-v="list">Liste</button>
+  <button data-v="data">Daten</button>
+  <button data-v="adm" id="nadm" hidden>Verwaltung</button>
+</nav>
+
+<main>
+  <h1>🐝 Wexhainer Stunden Tracker 🕒</h1>
+  <div class="ver" id="ver"></div>
+  <div class="mut" id="sum" hidden></div>
+  <div class="err" id="err" hidden></div>
+
+  <section id="vLoad"><p class="mut">Lädt …</p></section>
+
+  <section id="vAuth" hidden>
+    <div class="card">
+      <div class="tabs" id="authTabs"><button data-a="login" class="on">Anmelden</button><button data-a="reg">Registrieren</button></div>
+      <label for="aMail">E-Mail</label><input id="aMail" type="email" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false">
+      <div id="regName" hidden><label for="aName">Vor- und Nachname</label><input id="aName" type="text" autocomplete="name"></div>
+      <label for="aPw">Passwort (mind. 6 Zeichen)</label>
+      <div class="pw"><input id="aPw" type="password" autocomplete="current-password"><button type="button" class="eye" data-t="aPw" aria-label="Passwort anzeigen">👁</button></div>
+      <div id="regMore" hidden>
+        <label for="aPw2">Passwort wiederholen</label>
+        <div class="pw"><input id="aPw2" type="password" autocomplete="new-password"><button type="button" class="eye" data-t="aPw2" aria-label="Passwort anzeigen">👁</button></div>
+        <label class="chk"><input id="aDs" type="checkbox"><span>Ich habe den <a href="#" id="aDsOpen">Datenschutzhinweis</a> gelesen und bin einverstanden.</span></label>
+      </div>
+      <button class="btn" id="aBtn">Anmelden</button>
+      <button class="btn sec" id="aForgot">Passwort vergessen?</button>
+      <small class="mut" style="display:block;margin-top:10px">Hast du schon ein Konto in der Getränke-Strichliste, melde dich hier mit denselben Zugangsdaten an.</small>
+    </div>
+  </section>
+
+  <section id="vGate" hidden>
+    <div class="card">
+      <h2 id="gTitle"></h2>
+      <p id="gText"></p>
+      <div id="gProfile" hidden>
+        <label for="gName">Vor- und Nachname</label><input id="gName" type="text" autocomplete="name">
+        <button class="btn" id="gCreate">Profil anlegen</button>
+      </div>
+      <button class="btn sec" id="gOut">Abmelden</button>
+    </div>
+  </section>
+
+  <section id="vNew" hidden>
+    <div class="card">
+      <h2 id="ft">Neuer Eintrag</h2>
+      <label for="datum">Datum</label><input id="datum" type="date">
+      <label for="std">Stunden</label><input id="std" type="text" inputmode="decimal" placeholder="z. B. 2,5">
+      <label for="tat">Tätigkeit</label><input id="tat" type="text" list="tl" placeholder="z. B. Platzpflege" autocomplete="off">
+      <datalist id="tl"></datalist>
+      <label for="notiz">Notiz (optional)</label><input id="notiz" type="text" autocomplete="off">
+      <button class="btn" id="bs">Speichern</button>
+      <button class="btn sec" id="bc" hidden>Abbrechen</button>
+    </div>
+  </section>
+
+  <section id="vList" hidden>
+    <div class="row">
+      <div><label for="jahr">🗓️ Jahr</label><select id="jahr"></select></div>
+      <div id="mfw" hidden><label for="mf">Mitglied</label><select id="mf"></select></div>
+    </div>
+    <div id="list" style="margin-top:8px"></div>
+  </section>
+
+  <section id="vData" hidden>
+    <div class="card"><h2>Konto</h2><div id="who" class="mut"></div><button class="btn sec" id="lo">Abmelden</button></div>
+    <div class="card">
+      <h2>Excel-Export</h2>
+      <small class="mut" id="xh"></small>
+      <label for="xjahr">Zeitraum</label><select id="xjahr"></select>
+      <button class="btn" id="bx">Als Excel (.xlsx) exportieren</button>
+    </div>
+    <div class="card">
+      <h2>Backup (JSON)</h2>
+      <small class="mut">Sichert deine eigenen Einträge. Der Import fügt Einträge hinzu und überspringt Duplikate. Auch Backups der Supabase-Version lassen sich einlesen.</small>
+      <button class="btn" id="bj">Backup exportieren</button>
+      <label class="btn sec" style="display:block;text-align:center;margin-top:10px;color:var(--ink);font-size:1rem" for="imp">Backup importieren</label>
+      <input id="imp" type="file" accept=".json,application/json" hidden>
+    </div>
+    <div class="card">
+      <h2>Passwort ändern</h2>
+      <label for="pwOld">Aktuelles Passwort</label>
+      <div class="pw"><input id="pwOld" type="password" autocomplete="current-password"><button type="button" class="eye" data-t="pwOld" aria-label="Passwort anzeigen">👁</button></div>
+      <label for="pwNew">Neues Passwort (mind. 6 Zeichen)</label>
+      <div class="pw"><input id="pwNew" type="password" autocomplete="new-password"><button type="button" class="eye" data-t="pwNew" aria-label="Passwort anzeigen">👁</button></div>
+      <button class="btn sec" id="pwBtn">Passwort ändern</button>
+      <small class="mut" style="display:block;margin-top:8px">Das Passwort gilt auch für die Getränke-Strichliste.</small>
+    </div>
+    <div class="card"><button class="btn sec dng" id="ba" style="margin:0">Alle meine Einträge löschen</button></div>
+  </section>
+
+  <section id="vAdm" hidden>
+    <div class="card">
+      <h2>Mitglieder und Rechte</h2>
+      <small class="mut">Die Konten sind dieselben wie in der Getränke-Strichliste. Der Stundentracker braucht zusätzlich eine eigene Freigabe. „Sperren“ und „Freigeben“ eines neuen Kontos gelten in beiden Apps.</small>
+      <label for="uf">Anzeigen</label>
+      <select id="uf"><option value="">Alle</option><option value="wait">Wartende Konten</option><option value="nostd">Ohne Freigabe für den Stundentracker</option><option value="std">Mit Freigabe</option></select>
+    </div>
+    <div id="ml"></div>
+  </section>
+</main>
+
+<div class="modal" id="modal" hidden><div><p id="mt" style="margin-top:0;white-space:pre-line"></p><input id="mi" hidden style="margin-bottom:10px"><div id="mb"></div></div></div>
+<div id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+/* =========================================================
+   KONFIGURATION – dieselbe Firebase-Web-App wie die Getränke-Strichliste,
+   damit beide Apps die gleichen Konten nutzen. Der Web-API-Schlüssel darf
+   öffentlich sein; geschützt sind die Daten durch die Firestore-Regeln.
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyAnNipndzNRd1jmZf_bJ0f4EqcQv5h6wBg",
+  authDomain: "wexhainis-getraenkestrichliste.firebaseapp.com",
+  projectId: "wexhainis-getraenkestrichliste",
+  storageBucket: "wexhainis-getraenkestrichliste.firebasestorage.app",
+  messagingSenderId: "561283415943",
+  appId: "1:561283415943:web:56e161ccaac34529421d22"
+};
+const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
+/* ========================================================= */
+
+// Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
+const APP_VERSION = '1.0.0';
+
+const $ = id => document.getElementById(id);
+const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
+const nf = n => (+n).toLocaleString('de-DE', { maximumFractionDigits: 2 });
+const todayISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const dfmt = s => s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4);
+const MON = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+let toastT;
+function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
+
+/* ---------- Zustand ---------- */
+const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], view: 'new', editId: null, registering: false, dbError: '' };
+let F = {}, db, auth, rowsKey = '';
+const unsub = { me: null, rows: null, users: null };
+const stopL = k => { if (unsub[k]) { unsub[k](); unsub[k] = null; } };
+
+const isBoard = () => !S.isSuper && !!S.meDoc && S.meDoc.sr === 'vorstand';
+const canAll = () => S.isSuper || isBoard();
+const myName = () => (S.meDoc && S.meDoc.name) || (S.user && S.user.email) || '';
+
+function access() {
+  if (!S.user) return 'auth';
+  if (!S.meLoaded || !S.roleChecked) return 'load';
+  if (S.isSuper) return 'ok';
+  const d = S.meDoc;
+  if (!d) return S.registering ? 'load' : 'noprofile';
+  if (d.deleted) return 'removed';
+  if (d.blocked) return 'blocked';
+  if (d.pending) return 'pending';
+  if (d.std !== true) return 'nostd';
+  return 'ok';
+}
+const GATE = {
+  noprofile: ['Profil fehlt', 'Für dieses Konto gibt es noch kein Profil. Lege es mit deinem Namen an.'],
+  removed: ['Konto entfernt', 'Dieses Konto wurde entfernt. Bitte melde dich beim Vorstand.'],
+  blocked: ['Konto gesperrt', 'Dein Konto ist gesperrt. Bitte melde dich beim Vorstand.'],
+  pending: ['Warten auf Freischaltung', 'Dein Konto ist angelegt und wartet auf die Freischaltung durch den Super-Admin.'],
+  nostd: ['Noch nicht freigegeben', 'Dein Konto ist für den Stundentracker noch nicht freigegeben. Bitte melde dich beim Super-Admin.']
+};
+
+function fire(p, what) {
+  Promise.resolve(p).catch(err => {
+    console.error(what, err);
+    toast(err && err.code === 'permission-denied' ? 'Keine Berechtigung (' + what + '). Sind die aktuellen Firestore-Regeln veröffentlicht?' : 'Fehler bei „' + what + '“: ' + ((err && (err.code || err.message)) || ''));
+  });
+}
+function fail(where) {
+  return err => {
+    console.error(where, err);
+    S.dbError = err && err.code === 'permission-denied'
+      ? 'Keine Berechtigung beim Lesen (' + where + '). Sind die aktuellen Firestore-Regeln aus dem Repository veröffentlicht?'
+      : 'Datenbankfehler (' + where + '): ' + ((err && (err.code || err.message)) || '');
+    render();
+  };
+}
+
+/* ---------- Dialoge ---------- */
+function ask(msg, btns) {
+  return new Promise(res => {
+    $('mt').textContent = msg; $('mi').hidden = true;
+    const b = $('mb'); b.replaceChildren();
+    btns.forEach((t, i) => { const x = el('button', i === 0 ? 'btn' : 'btn sec', t); x.onclick = () => { $('modal').hidden = true; res(i); }; b.append(x); });
+    $('modal').hidden = false;
+  });
+}
+function askIn(msg, ph, val) {
+  return new Promise(res => {
+    $('mt').textContent = msg; const i = $('mi'); i.hidden = false; i.value = val || ''; i.placeholder = ph || '';
+    const b = $('mb'); b.replaceChildren();
+    const ok = el('button', 'btn', 'OK'), no = el('button', 'btn sec', 'Abbrechen');
+    ok.onclick = () => { $('modal').hidden = true; res(i.value.trim()); };
+    no.onclick = () => { $('modal').hidden = true; res(null); };
+    b.append(ok, no); $('modal').hidden = false; setTimeout(() => i.focus(), 50);
+  });
+}
+const PRIVACY = 'Datenschutzhinweis (Platzhalter – bitte vom Verein prüfen und anpassen)\n\n'
+  + 'Gespeichert werden: Name, E-Mail-Adresse, Zeitpunkt der Zustimmung sowie deine Arbeitsstunden (Datum, Tätigkeit, Stunden, Notiz).\n\n'
+  + 'Wer sieht was: Du siehst deine eigenen Einträge. Der Vorstand und der Super-Admin sehen die Einträge aller Mitglieder.\n\n'
+  + 'Wo: Die Daten liegen bei Google Firebase (Authentication und Firestore). Zum Löschen deiner Daten wende dich an den Super-Admin.';
+
+/* ---------- Firebase ---------- */
+async function initFirebase() {
+  const [appM, authM, fsM] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-auth.js'), import(FB + 'firebase-firestore.js')]);
+  F = Object.assign({}, appM, authM, fsM);
+  const app = F.initializeApp(firebaseConfig);
+  try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
+  catch (e) { db = F.getFirestore(app); }
+  auth = F.getAuth(app);
+  F.onAuthStateChanged(auth, async u => {
+    stopL('me'); stopL('rows'); stopL('users'); rowsKey = '';
+    Object.assign(S, { user: u, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], editId: null, dbError: '' });
+    if (!u) { render(); return; }
+    render();
+    unsub.me = F.onSnapshot(F.doc(db, 'users', u.uid), snap => {
+      S.meDoc = snap.exists() ? snap.data() : null; S.meLoaded = true; render(); syncRows();
+    }, fail('Profil'));
+    // Super-Admin erkennen: das Lesen von supercheck/x erlauben die Regeln nur Super-Admins
+    const ck = 'st_super_' + u.uid;
+    let sup = false;
+    try { await F.getDoc(F.doc(db, 'supercheck', 'x')); sup = true; }
+    catch (e) { sup = e && e.code === 'permission-denied' ? false : localStorage.getItem(ck) === '1'; }
+    try { localStorage.setItem(ck, sup ? '1' : '0'); } catch (e) {}
+    if (S.user !== u) return;
+    S.isSuper = sup; S.roleChecked = true; render(); syncRows();
+  });
+}
+
+function syncRows() {
+  const key = access() === 'ok' ? (canAll() ? 'all' : 'mine') + ':' + S.user.uid : '';
+  if (key === rowsKey) return;
+  stopL('rows'); rowsKey = key; S.rows = [];
+  if (!key) return;
+  const c = F.collection(db, 'stunden');
+  const q = canAll() ? c : F.query(c, F.where('uid', '==', S.user.uid));
+  unsub.rows = F.onSnapshot(q, snap => {
+    S.rows = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); S.dbError = ''; render();
+  }, fail('Stunden'));
+}
+function syncUsers() {
+  if (!S.isSuper || S.view !== 'adm') { stopL('users'); return; }
+  if (unsub.users) return;
+  unsub.users = F.onSnapshot(F.collection(db, 'users'), snap => {
+    S.users = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
+  }, fail('Mitglieder'));
+}
+
+/* ---------- Anzeige ---------- */
+function setView(v) {
+  S.view = v; syncUsers(); render(); window.scrollTo(0, 0);
+}
+function fillSelect(sel, values, label) {
+  const v = sel.value; sel.replaceChildren();
+  const a = el('option', null, label); a.value = ''; sel.append(a);
+  values.forEach(x => { const o = el('option', null, x); o.value = x; sel.append(o); });
+  sel.value = values.indexOf(v) > -1 ? v : '';
+}
+function render() {
+  const a = access(), ok = a === 'ok';
+  $('ver').textContent = 'Version ' + APP_VERSION;
+  $('vLoad').hidden = a !== 'load'; $('vAuth').hidden = a !== 'auth'; $('vGate').hidden = !GATE[a];
+  $('nav').hidden = !ok; $('nadm').hidden = !S.isSuper;
+  if (S.view === 'adm' && !S.isSuper) S.view = 'new';
+  ['new', 'list', 'data', 'adm'].forEach(v => { $('v' + v[0].toUpperCase() + v.slice(1)).hidden = !(ok && S.view === v); });
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
+  $('err').hidden = !S.dbError; $('err').textContent = S.dbError;
+  $('sum').hidden = !ok;
+  if (GATE[a]) {
+    $('gTitle').textContent = GATE[a][0]; $('gText').textContent = GATE[a][1];
+    $('gProfile').hidden = a !== 'noprofile';
+  }
+  if (!ok) return;
+  renderList(); renderData(); if (S.view === 'adm') renderAdm();
+}
+function yearsOf(rows) { const s = {}; rows.forEach(e => { s[e.datum.slice(0, 4)] = 1; }); return Object.keys(s).sort().reverse(); }
+function renderList() {
+  fillSelect($('jahr'), yearsOf(S.rows), 'Alle'); fillSelect($('xjahr'), yearsOf(S.rows), 'Alle');
+  $('mfw').hidden = !canAll();
+  if (canAll()) { const u = {}; S.rows.forEach(e => { if (e.name) u[e.name] = 1; }); fillSelect($('mf'), Object.keys(u).sort((x, y) => x.localeCompare(y, 'de')), 'Alle'); }
+  const tl = $('tl'); tl.replaceChildren();
+  const seen = {}; S.rows.forEach(e => { if (e.uid === S.user.uid && e.taetigkeit && !seen[e.taetigkeit]) { seen[e.taetigkeit] = 1; const o = document.createElement('option'); o.value = e.taetigkeit; tl.append(o); } });
+  const y = $('jahr').value, m = canAll() ? $('mf').value : '';
+  const rows = S.rows.filter(e => (!y || e.datum.indexOf(y) === 0) && (!m || e.name === m))
+    .sort((a, b) => b.datum.localeCompare(a.datum) || (b.t || 0) - (a.t || 0));
+  const tot = rows.reduce((s, e) => s + e.stunden, 0);
+  $('sum').textContent = (canAll() && !m ? 'Alle Mitglieder: ' : 'Summe: ') + nf(tot) + ' Std. · ' + rows.length + (rows.length === 1 ? ' Eintrag' : ' Einträge');
+  const box = $('list'); box.replaceChildren();
+  if (!rows.length) { box.append(el('p', 'mut', 'Noch keine Einträge.')); return; }
+  const sums = {}; rows.forEach(e => { const k = e.datum.slice(0, 7); sums[k] = (sums[k] || 0) + e.stunden; });
+  let cur = '';
+  rows.forEach(e => {
+    const k = e.datum.slice(0, 7);
+    if (k !== cur) { cur = k; const h = el('div', 'mh'); h.append(el('span', null, MON[+k.slice(5) - 1] + ' ' + k.slice(0, 4)), el('span', null, nf(sums[k]) + ' Std.')); box.append(h); }
+    const c = el('div', 'item'), l = el('div', 'il');
+    l.append(el('b', null, e.taetigkeit || '–'), el('small', 'mut', dfmt(e.datum) + (e.name ? ' · ' + e.name : '')));
+    if (e.notiz) l.append(el('small', 'mut', e.notiz));
+    const r = el('div', 'ir'); r.append(el('span', 'hrs', nf(e.stunden) + ' h'));
+    if (e.uid === S.user.uid || S.isSuper) {
+      const b1 = el('button', 'ic', '✎'); b1.setAttribute('aria-label', 'Bearbeiten'); b1.onclick = () => editRow(e.id);
+      const b2 = el('button', 'ic', '🗑'); b2.setAttribute('aria-label', 'Löschen'); b2.onclick = () => delRow(e.id);
+      r.append(b1, b2);
+    }
+    c.append(l, r); box.append(c);
+  });
+}
+function renderData() {
+  $('who').textContent = 'Angemeldet als ' + myName() + (S.isSuper ? ' · Super-Admin' : isBoard() ? ' · Vorstand (sieht alle Einträge)' : '');
+  $('xh').textContent = canAll() ? 'Enthält die Einträge aller Mitglieder.' : 'Enthält deine eigenen Einträge.';
+}
+
+/* ---------- Eintragen ---------- */
+function resetForm() {
+  S.editId = null; $('datum').value = todayISO(); $('std').value = ''; $('tat').value = ''; $('notiz').value = '';
+  $('ft').textContent = 'Neuer Eintrag'; $('bs').textContent = 'Speichern'; $('bc').hidden = true;
+}
+function editRow(id) {
+  const e = S.rows.find(x => x.id === id); if (!e) return;
+  S.editId = id; $('datum').value = e.datum; $('std').value = String(e.stunden).replace('.', ','); $('tat').value = e.taetigkeit || ''; $('notiz').value = e.notiz || '';
+  $('ft').textContent = e.uid === S.user.uid ? 'Eintrag bearbeiten' : 'Eintrag von ' + e.name + ' bearbeiten';
+  $('bs').textContent = 'Änderung speichern'; $('bc').hidden = false; setView('new');
+}
+async function delRow(id) {
+  const x = S.rows.find(e => e.id === id); if (!x) return;
+  const msg = x.uid !== S.user.uid ? 'Eintrag von ' + x.name + ' (' + nf(x.stunden) + ' h am ' + dfmt(x.datum) + ') wirklich löschen?' : 'Diesen Eintrag löschen?';
+  if (await ask(msg, ['Löschen', 'Abbrechen']) !== 0) return;
+  fire(F.deleteDoc(F.doc(db, 'stunden', id)), 'Eintrag löschen'); toast('Eintrag gelöscht.');
+}
+$('bc').onclick = resetForm;
+$('bs').onclick = () => {
+  const h = parseFloat($('std').value.replace(',', '.')), d = $('datum').value;
+  if (!d) { toast('Bitte ein Datum wählen.'); return; }
+  if (!(h > 0) || h > 24) { toast('Bitte gültige Stunden (0–24) eingeben.'); return; }
+  const o = { datum: d, taetigkeit: $('tat').value.trim().slice(0, 200), stunden: Math.round(h * 100) / 100, notiz: $('notiz').value.trim().slice(0, 500) };
+  if (S.editId) fire(F.updateDoc(F.doc(db, 'stunden', S.editId), o), 'Eintrag ändern');
+  else fire(F.addDoc(F.collection(db, 'stunden'), Object.assign({ uid: S.user.uid, name: myName().slice(0, 40), t: Date.now() }, o)), 'Eintrag speichern');
+  const was = S.editId; resetForm();
+  toast(navigator.onLine ? (was ? 'Änderung gespeichert.' : 'Eintrag gespeichert.') : 'Gespeichert – wird gesendet, sobald du online bist.');
+};
+
+/* ---------- Anmeldung ---------- */
+let authMode = 'login';
+function setAuthMode(m) {
+  authMode = m; const reg = m === 'reg';
+  document.querySelectorAll('#authTabs button').forEach(b => b.classList.toggle('on', b.dataset.a === m));
+  $('regName').hidden = !reg; $('regMore').hidden = !reg;
+  $('aBtn').textContent = reg ? 'Registrieren' : 'Anmelden'; $('aForgot').hidden = reg;
+  $('aPw').autocomplete = reg ? 'new-password' : 'current-password';
+}
+$('authTabs').onclick = e => { const b = e.target.closest('[data-a]'); if (b) setAuthMode(b.dataset.a); };
+document.querySelectorAll('.eye').forEach(b => {
+  b.onclick = () => { const i = $(b.dataset.t), on = i.type === 'password'; i.type = on ? 'text' : 'password'; b.textContent = on ? '🙈' : '👁'; b.setAttribute('aria-label', on ? 'Passwort verbergen' : 'Passwort anzeigen'); };
+});
+function hidePw() { document.querySelectorAll('.eye').forEach(b => { $(b.dataset.t).type = 'password'; b.textContent = '👁'; }); }
+const authMsg = code => ({
+  'auth/invalid-credential': 'E-Mail oder Passwort falsch.', 'auth/wrong-password': 'E-Mail oder Passwort falsch.', 'auth/user-not-found': 'E-Mail oder Passwort falsch.',
+  'auth/invalid-email': 'Die E-Mail-Adresse ist ungültig.', 'auth/email-already-in-use': 'Für diese E-Mail gibt es schon ein Konto – bitte „Anmelden“ wählen.',
+  'auth/weak-password': 'Das Passwort braucht mindestens 6 Zeichen.', 'auth/too-many-requests': 'Zu viele Versuche. Bitte kurz warten.',
+  'auth/requires-recent-login': 'Bitte einmal ab- und wieder anmelden und es dann erneut versuchen.',
+  'auth/network-request-failed': 'Keine Verbindung. Für die Anmeldung wird Internet benötigt.', 'auth/operation-not-allowed': 'E-Mail/Passwort ist in Firebase noch nicht aktiviert.'
+}[code] || 'Fehler: ' + code);
+$('aDsOpen').onclick = e => { e.preventDefault(); ask(PRIVACY, ['Schließen']); };
+$('aBtn').onclick = async () => {
+  const mail = $('aMail').value.trim(), pw = $('aPw').value, btn = $('aBtn');
+  if (!navigator.onLine) { toast('Für die Anmeldung wird Internet benötigt'); return; }
+  if (!mail || !pw) { toast('E-Mail und Passwort eingeben'); return; }
+  btn.disabled = true;
+  try {
+    if (authMode === 'reg') {
+      const name = $('aName').value.trim().replace(/\s+/g, ' ');
+      if (name.length < 3 || !/\s/.test(name)) { toast('Bitte Vor- und Nachnamen eingeben'); return; }
+      if (pw.length < 6) { toast('Das Passwort braucht mindestens 6 Zeichen'); return; }
+      if (pw !== $('aPw2').value) { toast('Die Passwörter stimmen nicht überein'); return; }
+      if (!$('aDs').checked) { toast('Bitte den Datenschutzhinweis bestätigen'); return; }
+      if (await ask('Konto für „' + name + '“ anlegen? Der Name kann danach nur noch vom Super-Admin geändert werden.', ['Konto anlegen', 'Abbrechen']) !== 0) return;
+      S.registering = true; render();
+      try {
+        const cred = await F.createUserWithEmailAndPassword(auth, mail, pw);
+        await F.setDoc(F.doc(db, 'users', cred.user.uid), { name: name.slice(0, 40), email: mail.toLowerCase(), t: Date.now(), pending: true, dsgvo: Date.now() });
+        $('aPw').value = ''; $('aPw2').value = '';
+      } finally { S.registering = false; render(); }
+    } else {
+      await F.signInWithEmailAndPassword(auth, mail, pw); $('aPw').value = '';
+    }
+  } catch (err) { toast(authMsg(err.code || '')); }
+  finally { btn.disabled = false; }
+};
+$('aForgot').onclick = async () => {
+  const mail = $('aMail').value.trim();
+  if (!mail) { toast('Bitte zuerst die E-Mail-Adresse eintragen'); $('aMail').focus(); return; }
+  try { await F.sendPasswordResetEmail(auth, mail); } catch (e) { if (e.code === 'auth/invalid-email') { toast('Die E-Mail-Adresse ist ungültig.'); return; } }
+  toast('Falls es ein Konto gibt, kommt gleich eine E-Mail zum Zurücksetzen.');
+};
+async function logout() { hidePw(); S.view = 'new'; await F.signOut(auth); }
+$('lo').onclick = logout; $('gOut').onclick = logout;
+$('gCreate').onclick = async () => {
+  const name = $('gName').value.trim().replace(/\s+/g, ' ');
+  if (name.length < 3 || !/\s/.test(name)) { toast('Bitte Vor- und Nachnamen eingeben'); return; }
+  try { await F.setDoc(F.doc(db, 'users', S.user.uid), { name: name.slice(0, 40), email: String(S.user.email || '').toLowerCase(), t: Date.now(), pending: true, dsgvo: Date.now() }); }
+  catch (e) { toast('Profil konnte nicht angelegt werden: ' + (e.code || e.message)); }
+};
+$('pwBtn').onclick = async () => {
+  const o = $('pwOld').value, n = $('pwNew').value;
+  if (!o || n.length < 6) { toast('Bitte aktuelles und neues Passwort (mind. 6 Zeichen) eingeben.'); return; }
+  try {
+    await F.reauthenticateWithCredential(S.user, F.EmailAuthProvider.credential(S.user.email, o));
+    await F.updatePassword(S.user, n); $('pwOld').value = ''; $('pwNew').value = ''; hidePw(); toast('Passwort geändert.');
+  } catch (e) { toast(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' ? 'Das aktuelle Passwort ist falsch.' : authMsg(e.code || '')); }
+};
+
+/* ---------- Export / Backup ---------- */
+function download(name, data, mime) {
+  try { const u = URL.createObjectURL(new Blob([data], { type: mime })), a = document.createElement('a'); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return true; }
+  catch (e) { toast('Speichern nicht möglich.'); return false; }
+}
+$('bx').onclick = () => {
+  const y = $('xjahr').value;
+  const rows = S.rows.filter(e => !y || e.datum.indexOf(y) === 0).sort((a, b) => a.datum.localeCompare(b.datum) || (a.name || '').localeCompare(b.name || '', 'de'));
+  if (!rows.length) { toast('Keine Einträge zum Exportieren.'); return; }
+  if (!window.XLSX) { toast('Excel-Bibliothek konnte nicht geladen werden.'); return; }
+  const aoa = [['Datum', 'Name', 'Tätigkeit', 'Stunden', 'Notiz']], per = {}; let tot = 0;
+  rows.forEach(e => { const p = e.datum.split('-'); aoa.push([new Date(+p[0], +p[1] - 1, +p[2], 12), e.name, e.taetigkeit, e.stunden, e.notiz]); tot += e.stunden; const n = e.name || '(ohne Name)'; per[n] = (per[n] || 0) + e.stunden; });
+  const n = rows.length; aoa.push(['', '', 'Summe', tot, '']);
+  const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
+  for (let i = 0; i < n; i++) { const c = ws['A' + (i + 2)]; if (c) c.z = 'DD.MM.YYYY'; }
+  ws['D' + (n + 2)] = { t: 'n', v: tot, f: 'SUM(D2:D' + (n + 1) + ')' };
+  ws['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 28 }, { wch: 10 }, { wch: 32 }];
+  const a2 = [['Name', 'Stunden']]; Object.keys(per).sort((a, b) => a.localeCompare(b, 'de')).forEach(k => a2.push([k, per[k]])); a2.push(['Gesamt', tot]);
+  const ws2 = XLSX.utils.aoa_to_sheet(a2); ws2['!cols'] = [{ wch: 26 }, { wch: 10 }];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Arbeitsstunden'); XLSX.utils.book_append_sheet(wb, ws2, 'Summe je Person');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  if (download('stundentracker' + (y ? '-' + y : '') + '.xlsx', buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) toast('Excel-Datei exportiert.');
+};
+$('bj').onclick = () => {
+  const mine = S.rows.filter(e => e.uid === S.user.uid).map(e => ({ datum: e.datum, name: e.name, taetigkeit: e.taetigkeit, stunden: e.stunden, notiz: e.notiz }));
+  const data = JSON.stringify({ app: 'wexhainis-stundentracker', version: 1, exportiert: new Date().toISOString(), eintraege: mine }, null, 2);
+  if (download('stundentracker-backup-' + todayISO() + '.json', data, 'application/json')) toast('Backup exportiert.');
+};
+const keyOf = e => [e.datum, e.taetigkeit || '', +e.stunden, e.notiz || ''].join('|');
+$('imp').onchange = async ev => {
+  const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text()), arr = Array.isArray(d) ? d : d.eintraege;
+    if (!Array.isArray(arr)) throw new Error('format');
+    const have = {}; S.rows.filter(e => e.uid === S.user.uid).forEach(e => { have[keyOf(e)] = 1; });
+    const ok = [];
+    arr.forEach(e => {
+      if (!e || typeof e !== 'object') return;
+      const h = parseFloat(String(e.stunden).replace(',', '.'));
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(e.datum)) || !(h > 0) || h > 24) return;
+      const r = { datum: e.datum, taetigkeit: String(e.taetigkeit || '').slice(0, 200), stunden: Math.round(h * 100) / 100, notiz: String(e.notiz || '').slice(0, 500) };
+      if (have[keyOf(r)]) return; have[keyOf(r)] = 1; ok.push(r);
+    });
+    if (!ok.length) { toast('Keine neuen Einträge gefunden.'); return; }
+    if (await ask(ok.length + ' neue Einträge importieren?', ['Importieren', 'Abbrechen']) !== 0) return;
+    for (let i = 0; i < ok.length; i += 400) {
+      const b = F.writeBatch(db);
+      ok.slice(i, i + 400).forEach(r => b.set(F.doc(F.collection(db, 'stunden')), Object.assign({ uid: S.user.uid, name: myName().slice(0, 40), t: Date.now() }, r)));
+      fire(b.commit(), 'Import');
+    }
+    toast(ok.length + ' Einträge importiert.');
+  } catch (e) { toast('Datei konnte nicht gelesen werden.'); }
+};
+$('ba').onclick = async () => {
+  const mine = S.rows.filter(e => e.uid === S.user.uid);
+  if (!mine.length) { toast('Du hast keine Einträge.'); return; }
+  if (await ask('Wirklich alle deine ' + mine.length + ' Einträge löschen? Das lässt sich nicht rückgängig machen.', ['Alles löschen', 'Abbrechen']) !== 0) return;
+  for (let i = 0; i < mine.length; i += 400) { const b = F.writeBatch(db); mine.slice(i, i + 400).forEach(e => b.delete(F.doc(db, 'stunden', e.id))); fire(b.commit(), 'Einträge löschen'); }
+  toast('Deine Einträge wurden gelöscht.');
+};
+
+/* ---------- Verwaltung (Super-Admin) ---------- */
+function renderAdm() {
+  const f = $('uf').value, box = $('ml'); box.replaceChildren();
+  const stat = {}; S.rows.forEach(e => { const s = stat[e.uid] || (stat[e.uid] = { n: 0, h: 0 }); s.n++; s.h += e.stunden; });
+  const list = S.users.filter(u => !u.deleted).filter(u => f === 'wait' ? u.pending : f === 'nostd' ? u.std !== true : f === 'std' ? u.std === true : true)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'de'));
+  if (!list.length) { box.append(el('p', 'mut', 'Keine Konten in dieser Auswahl.')); return; }
+  list.forEach(u => {
+    const c = el('div', 'item'), l = el('div', 'il'), s = stat[u.id] || { n: 0, h: 0 };
+    l.append(el('b', null, u.name || '(ohne Name)'), el('small', 'mut', u.email || ''));
+    const tags = el('div');
+    const tag = (t, cls) => tags.append(el('span', 'tag ' + (cls || ''), t));
+    if (u.pending) tag('wartet auf Freischaltung', 'warn');
+    if (u.blocked) tag('gesperrt', 'warn');
+    tag(u.std === true ? 'Stundentracker: freigegeben' : 'Stundentracker: nicht freigegeben', u.std === true ? 'ok' : '');
+    if (u.sr === 'vorstand') tag('Vorstand', 'ok');
+    if (u.role) tag('Strichliste: ' + u.role);
+    l.append(tags, el('small', 'mut', nf(s.h) + ' h · ' + s.n + (s.n === 1 ? ' Eintrag' : ' Einträge')));
+    const b = el('button', 'ic', '⋯'); b.setAttribute('aria-label', 'Aktionen'); b.onclick = () => memberMenu(u);
+    c.append(l, b); box.append(c);
+  });
+}
+$('uf').onchange = renderAdm;
+async function memberMenu(u) {
+  const self = u.id === S.user.uid, o = [];
+  if (!self) {
+    o.push(u.pending ? 'Freigeben (Konto und Stundentracker)' : u.std === true ? 'Stundentracker-Zugang entziehen' : 'Stundentracker freigeben');
+    o.push(u.sr === 'vorstand' ? 'Vorstand entziehen' : 'Zum Vorstand machen');
+  }
+  o.push('Umbenennen');
+  if (!self) o.push(u.blocked ? 'Konto entsperren (beide Apps)' : 'Konto sperren (beide Apps)');
+  o.push('Schließen');
+  const a = o[await ask((u.name || '') + (u.email ? ' (' + u.email + ')' : ''), o)], ref = F.doc(db, 'users', u.id);
+  if (a === 'Freigeben (Konto und Stundentracker)') {
+    if (await ask('Konto von ' + u.name + ' freigeben? Die Freischaltung gilt auch für die Getränke-Strichliste.', ['Freigeben', 'Abbrechen']) === 0) { fire(F.updateDoc(ref, { pending: false, std: true }), 'Freigeben'); toast('Freigegeben.'); }
+  } else if (a === 'Stundentracker freigeben') { fire(F.updateDoc(ref, { std: true }), 'Freigeben'); toast('Stundentracker freigegeben.'); }
+  else if (a === 'Stundentracker-Zugang entziehen') { fire(F.updateDoc(ref, { std: false }), 'Zugang entziehen'); toast('Zugang entzogen.'); }
+  else if (a === 'Zum Vorstand machen') { fire(F.updateDoc(ref, { sr: 'vorstand' }), 'Rolle'); toast('Jetzt Vorstand (sieht alle Einträge).'); }
+  else if (a === 'Vorstand entziehen') { fire(F.updateDoc(ref, { sr: '' }), 'Rolle'); toast('Vorstandsrolle entzogen.'); }
+  else if (a === 'Umbenennen') {
+    const n = await askIn('Neuer Name für ' + u.name, 'Vor- und Nachname', u.name);
+    if (n && n.length >= 2 && n.length <= 40) await rename(u, n.replace(/\s+/g, ' '));
+    else if (n) toast('Der Name braucht 2 bis 40 Zeichen.');
+  } else if (a === 'Konto sperren (beide Apps)' || a === 'Konto entsperren (beide Apps)') {
+    const sp = a.startsWith('Konto sperren');
+    if (await ask((sp ? 'Konto von ' + u.name + ' sperren? Die Person kann dann auch die Getränke-Strichliste nicht mehr nutzen.' : 'Konto von ' + u.name + ' wieder freigeben?'), [sp ? 'Sperren' : 'Entsperren', 'Abbrechen']) === 0) { fire(F.updateDoc(ref, { blocked: sp }), 'Sperren'); toast(sp ? 'Konto gesperrt.' : 'Konto entsperrt.'); }
+  }
+}
+async function rename(u, name) {
+  try {
+    const snap = await F.getDocs(F.query(F.collection(db, 'stunden'), F.where('uid', '==', u.id)));
+    const b = F.writeBatch(db); let n = 0; const all = [];
+    b.update(F.doc(db, 'users', u.id), { name }); n++;
+    let cur = b;
+    snap.docs.forEach(d => { if (n >= 400) { all.push(cur); cur = F.writeBatch(db); n = 0; } cur.update(d.ref, { name }); n++; });
+    all.push(cur);
+    for (const x of all) await x.commit();
+    toast('Name geändert (auch in ' + snap.size + ' Einträgen).');
+  } catch (e) { toast('Umbenennen fehlgeschlagen: ' + (e.code || e.message)); }
+}
+
+/* ---------- Start ---------- */
+document.querySelectorAll('nav button').forEach(b => { b.onclick = () => setView(b.dataset.v); });
+$('jahr').onchange = renderList; $('mf').onchange = renderList;
+setAuthMode('login'); resetForm(); render();
+initFirebase().catch(err => { console.error(err); $('vLoad').textContent = 'Firebase konnte nicht geladen werden. Bitte Internetverbindung prüfen und neu laden.'; });
+if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+</script>
+</body>
+</html>

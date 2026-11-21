@@ -1,0 +1,313 @@
+rules_version = '2';
+
+// Sicherheitsregeln für die Strichliste UND den Wexhainer Stundentracker (gleiches Firebase-Projekt, gleiche Konten).
+// Wichtig: Diese Datei enthält beide Apps. Beim Veröffentlichen ersetzt sie die bisherigen Regeln komplett.
+// In der Firebase-Konsole unter Firestore → Regeln komplett einfügen und „Veröffentlichen“.
+//
+// Rollen:
+//   Super-Admin – steht unten in superUids(); darf alles, ernennt Admins, sperrt und entfernt Konten
+//   Getränke-Admin – Rolle 'admin', vom Super-Admin ernannt; verwaltet Tage, Getränke, Abgleich
+//   Vorstand       – Rolle 'vorstand'; darf Tage, Buchungen, Personen und Getränke nur LESEN (für Excel-Auswertungen)
+//   Mitglied       – bucht für sich selbst
+//
+// Stundentracker (zusätzliche Felder im Dokument users/{uid}, nur der Super-Admin setzt sie):
+//   std = true        – für den Stundentracker freigegeben (eigene Stunden erfassen, ändern, löschen)
+//   sr  = 'vorstand'  – darf im Stundentracker die Stunden aller Mitglieder lesen (Excel-Auswertung)
+//   Der Super-Admin sieht, ändert und löscht alle Stunden und verwaltet die Konten.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ▼▼▼ Nutzer-IDs der Super-Admins (in der App unter Admin → „Für die Einrichtung: Nutzer-ID“) ▼▼▼
+    function superUids() {
+      return ['M6oUtrEDdAd7dKlrOGxdUezuSsE3'];
+    }
+    // ▲▲▲
+
+    // Angemeldet mit E-Mail und Passwort
+    function signedIn() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+    function profilePath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function hasProfile()  { return exists(profilePath()); }
+    function profile()     { return get(profilePath()).data; }
+
+    function isSuper() { return signedIn() && request.auth.uid in superUids(); }
+    // Mitglied mit Namen, freigeschaltet, nicht gesperrt, nicht entfernt
+    function isActive() {
+      return signedIn() && hasProfile()
+        && profile().get('pending', false) != true
+        && profile().get('blocked', false) != true
+        && profile().get('deleted', false) != true;
+    }
+    // Jugendschutz: alkoholische Sorten
+    function alcCats() { return ['bier', 'radler', 'wein', 'schnaps']; }
+    function productIsAlc(pid) {
+      return get(/databases/$(database)/documents/products/$(pid)).data.get('cat', 'sonst') in alcCats();
+    }
+    function isAdmin() { return isSuper() || (isActive() && profile().get('role', '') == 'admin'); }
+    function isBoard() { return isActive() && profile().get('role', '') == 'vorstand'; }
+    // darf alles lesen, was für Abgleich und Auswertung nötig ist
+    function isReader() { return isAdmin() || isBoard(); }
+
+    // ---- Stundentracker ----
+    function stdActive()  { return isActive() && profile().get('std', false) == true; }
+    function isStdBoard() { return stdActive() && profile().get('sr', '') == 'vorstand'; }
+    function stundeOk(d) {
+      return d.keys().hasOnly(['uid', 'name', 'datum', 'taetigkeit', 'stunden', 'notiz', 't'])
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 40
+        && d.datum is string && d.datum.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.taetigkeit is string && d.taetigkeit.size() <= 200
+        && d.notiz is string && d.notiz.size() <= 500
+        && d.stunden is number && d.stunden > 0 && d.stunden <= 24
+        && d.t is number;
+    }
+    // Zählerfelder: alle Getränke, Bier und je eine Sorte
+    function counterKeys() { return ['all', 'beer', 'c_radler', 'c_alkfrei', 'c_wein', 'c_wasser', 'c_soft', 'c_schnaps', 'c_sonst']; }
+
+    // Gegen Schummeln: Mitglieder dürfen einen Zähler pro Schreibvorgang nur um genau 1 ändern
+    // (Buchen +1, Rückgängig −1). Admin-Handys gleichen die Zähler zusätzlich mit den Buchungen ab.
+    function oldData() { return resource == null ? {} : resource.data; }
+    function step1(a, b, k) {
+      return b.get(k, 0) is int && b.get(k, 0) - a.get(k, 0) <= 1 && b.get(k, 0) - a.get(k, 0) >= -1;
+    }
+    function countersOk(a, b) {
+      return step1(a, b, 'all') && step1(a, b, 'beer') && step1(a, b, 'c_radler') && step1(a, b, 'c_alkfrei') && step1(a, b, 'c_wein')
+        && step1(a, b, 'c_wasser') && step1(a, b, 'c_soft') && step1(a, b, 'c_schnaps') && step1(a, b, 'c_sonst');
+    }
+    function boardEntryOk(a, b) { return step1(a, b, 'all') && step1(a, b, 'beer') && step1(a, b, 'na'); }
+    // Bestenliste: nur der eigene Eintrag und die eigene Gruppe, jeweils ±1
+    function boardOk(o, n) {
+      let me = request.auth.uid;
+      let grp = profile().get('grp', '');
+      let op = o.get('p', {});
+      let np = n.get('p', {});
+      let og = o.get('g', {});
+      let ng = n.get('g', {});
+      return np.diff(op).affectedKeys().hasOnly([me]) && ng.diff(og).affectedKeys().hasOnly([grp])
+        && boardEntryOk(op.get(me, {}), np.get(me, {})) && boardEntryOk(og.get(grp, {}), ng.get(grp, {}));
+    }
+
+    // Getränke, Tage und „aktiver Tag“: alle lesen, nur Admins ändern
+    match /products/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /days/{id}     { allow read: if signedIn(); allow create, update: if isAdmin(); allow delete: if isSuper(); }
+    // aktiver Tag: Admins; Easter Eggs an/aus und Zurücksetzen (eggs, epoch): nur Super-Admins
+    match /meta/{id} {
+      allow read: if signedIn();
+      allow write: if isSuper() || (isAdmin() && (resource == null
+        ? !request.resource.data.keys().hasAny(['eggs', 'epoch'])
+        : !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eggs', 'epoch'])));
+    }
+
+    // Nur zum Prüfen der eigenen Rechte
+    match /admincheck/{id} { allow read: if isAdmin(); }
+    match /supercheck/{id} { allow read: if isSuper(); }
+    match /boardcheck/{id} { allow read: if isBoard(); }
+
+    // Personen: Name einmal selbst festlegen, danach ändern nur Admins
+    match /users/{uid} {
+      allow read: if isReader() || (signedIn() && request.auth.uid == uid);
+
+      // neue Konten warten auf Freischaltung (pending = true)
+      // Super-Admin: auch beim Wiederherstellen eines Backups
+      allow create: if isSuper() || (signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'email', 't', 'pending', 'grp', 'dsgvo'])
+        && request.resource.data.pending == true
+        && (!('grp' in request.resource.data) || (request.resource.data.grp is string && request.resource.data.grp.size() <= 40))
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3
+        && request.resource.data.name.size() <= 40
+        && (!('email' in request.resource.data) || request.resource.data.email == request.auth.token.email.lower()));
+
+      allow update: if
+        // Super-Admin: alles (Rolle, Sperre, Entfernen, Name)
+        isSuper()
+        // Admin: Name korrigieren, freischalten, Jugendschutz, Gruppe
+        || (isAdmin()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'pending', 'minor', 'grp'])
+            && request.resource.data.name is string
+            && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 40
+            && (!('pending' in request.resource.data.diff(resource.data).affectedKeys()) || request.resource.data.pending == false))
+        // Admin: eine wartende Anmeldung ablehnen
+        || (isAdmin() && resource.data.get('pending', false) == true
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pending', 'deleted', 'blocked']))
+        // Mitglied: eigene E-Mail nachtragen, Datenschutz bestätigen, Löschung beantragen, Easter Eggs für sich aus/an
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'dsgvo', 'delreq', 'eggoff'])
+            && (!('email' in request.resource.data.diff(resource.data).affectedKeys())
+                || request.resource.data.email == request.auth.token.email.lower()));
+
+      allow delete: if isSuper();
+    }
+
+    // Easter Eggs: Zähler für die Gruppe (pro Tag und gesamt) – alle Mitglieder zählen mit
+    match /gstats/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || (isActive()
+        && request.resource.data.keys().hasOnly(counterKeys())
+        && countersOk(oldData(), request.resource.data));
+    }
+    // Easter Eggs: eigene Gesamtzahl
+    match /ustats/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isAdmin() || (isActive() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(counterKeys())
+        && countersOk(oldData(), request.resource.data));
+    }
+    // Easter Eggs: Gruppen-Meldungen, die alle Handys anzeigen (eine pro Meilenstein)
+    match /live/{id} {
+      allow read: if signedIn();
+      allow delete: if isAdmin();
+      allow create, update: if isActive()
+        && request.resource.data.keys().hasOnly(['id', 'day', 'title', 'sub', 'uid', 'name', 't', 'alc', 'rid'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.title is string && request.resource.data.title.size() <= 80
+        && request.resource.data.sub is string && request.resource.data.sub.size() <= 160;
+    }
+
+    // Easter Eggs: eigener Verlauf pro Tag (Dokument-ID = Nutzer-ID + "_" + Tag)
+    match /ueggs/{id} {
+      allow read: if isAdmin() || (signedIn() && id.matches(request.auth.uid + '_.+'));
+      allow write: if isAdmin() || (isActive() && id.matches(request.auth.uid + '_.+')
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'day', 'items'])
+        && request.resource.data.items is list && request.resource.data.items.size() <= 200);
+    }
+
+    // Profilbilder: kleines JPEG als Text, alle dürfen sehen, nur man selbst ändern; Admins dürfen entfernen
+    match /avatars/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isSuper() || (isActive() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['img', 't'])
+        && request.resource.data.img is string
+        && request.resource.data.img.size() < 60000
+        && request.resource.data.img.matches('^data:image/(jpeg|png|webp);base64,.*'));
+      allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+    }
+
+    // Bestenliste (Personen und Gruppen, pro Tag und gesamt)
+    match /gboard/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || (isActive() && request.resource.data.keys().hasOnly(['g', 'p'])
+        && boardOk(oldData(), request.resource.data));
+    }
+    // Sammelalbum: welche Easter Eggs man hatte
+    match /album/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isAdmin() || (isActive() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['r']));
+    }
+    // Fahrer-Modus pro Tag (Dokument-ID = Nutzer-ID + "_" + Tag)
+    match /drv/{id} {
+      allow read: if isReader() || (signedIn() && id.matches(request.auth.uid + '_.+'));
+      allow create, update: if isSuper() || (isActive() && id.matches(request.auth.uid + '_.+')
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'day', 't', 'name']));
+      allow delete: if isAdmin() || (signedIn() && id.matches(request.auth.uid + '_.+'));
+    }
+
+    // Easter-Egg-Regeln, Gruppen, Sichtbarkeit, Kontakt, Bestenliste: alle lesen, nur Super-Admins ändern
+    // Gruppen, Kontakt und Datenschutz sind schon vor der Anmeldung lesbar (Registrierung)
+    match /config/{id} {
+      allow read: if signedIn() || id in ['groups', 'contact', 'privacy', 'theme'];
+      // Partymodus dürfen auch Getränke-Admins starten und beenden – aber nur, wenn der Super-Admin ihn erlaubt hat
+      // Datum des letzten Backups dürfen alle Admins setzen
+      allow write: if isSuper() || (id == 'backup' && isAdmin()) || (id == 'party' && isAdmin()
+        && get(/databases/$(database)/documents/config/features).data.get('partyOk', false) == true);
+    }
+
+    // Gebucht pro Getränk am Tag (für die Buchungsgrenze): Mitglieder zählen ihr Getränk um genau 1 hoch oder runter
+    match /dused/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || (isActive() && request.resource.data.get('last', null) is string
+        && request.resource.data.diff(oldData()).affectedKeys().hasOnly([request.resource.data.last, 'last'])
+        && step1(oldData(), request.resource.data, request.resource.data.last));
+    }
+    // Tageszusammenfassungen für die tägliche Zählerprüfung: nur der Super-Admin
+    match /dsum/{id} { allow read, write: if isSuper(); }
+
+    // Protokoll aller Änderungen: jeder schreibt eigene Einträge, nur Super-Admins lesen, niemand ändert oder löscht
+    match /log/{id} {
+      allow read: if isSuper();
+      // Super-Admin: fehlende Einträge aus einem Backup ergänzen (ändern bleibt unmöglich)
+      allow create: if isSuper() || (signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['t', 'date', 'uid', 'who', 'type', 'text', 'day'])
+        && request.resource.data.text is string && request.resource.data.text.size() <= 300
+        && request.resource.data.type in ['person', 'buchung', 'einladen', 'getraenk', 'tag', 'egg', 'system']);
+      allow update, delete: if false;
+    }
+
+    // Posteingang: Nachrichten, Fehlermeldungen und Feedback an den Super-Admin.
+    // Absendername und E-Mail kommen aus dem Konto (kein Fremdname möglich). Auch wartende oder gesperrte Konten dürfen schreiben.
+    match /msgs/{id} {
+      allow read: if isSuper() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isSuper() || (signedIn() && hasProfile()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'email', 'kind', 'text', 'info', 't', 'read', 'status'])
+        && request.resource.data.name == profile().get('name', '')
+        && request.resource.data.email == request.auth.token.email.lower()
+        && request.resource.data.kind in ['msg', 'bug', 'idea']
+        && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 1000
+        && request.resource.data.info is string && request.resource.data.info.size() <= 600
+        && request.resource.data.read == false && request.resource.data.status == 'open');
+      allow update, delete: if isSuper();
+    }
+
+    // Korrektur- und Nachbuchungsanträge: Mitglieder stellen, Admins entscheiden
+    match /reqs/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isSuper() || (isActive()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'day', 'p', 'n', 'type', 'note', 't', 'status'])
+        && request.resource.data.status == 'open'
+        && request.resource.data.type in ['add', 'del']
+        && request.resource.data.n is int && request.resource.data.n >= 1 && request.resource.data.n <= 20
+        && request.resource.data.note is string && request.resource.data.note.size() <= 200
+        && request.resource.data.p is string && request.resource.data.day is string
+        // Jugendschutz: kein Alkohol nachbuchen
+        && (request.resource.data.type == 'del' || profile().get('minor', false) != true || !productIsAlc(request.resource.data.p)));
+      allow update: if isSuper() || isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'by', 'byName', 'at', 'reason'])
+        && request.resource.data.status in ['ok', 'no'];
+      // löschen: Super-Admin alle; Mitglieder ziehen eigene offene Anträge zurück
+      allow delete: if isSuper() || (signedIn() && resource.data.uid == request.auth.uid && resource.data.status == 'open');
+    }
+
+    // Wexhainer Stundentracker: Arbeitsstunden
+    // Mitglieder sehen und ändern nur ihre eigenen Einträge, Vorstand liest alle, Super-Admin darf alles.
+    // Der Name im Eintrag muss dem Namen im Profil entsprechen (kein Fremdname möglich).
+    match /stunden/{id} {
+      allow read: if isSuper() || isStdBoard() || (stdActive() && resource.data.uid == request.auth.uid);
+      allow create: if isSuper() || (stdActive() && stundeOk(request.resource.data)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name == profile().get('name', ''));
+      allow update: if isSuper() || (stdActive() && stundeOk(request.resource.data)
+        && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name == profile().get('name', ''));
+      allow delete: if isSuper() || (stdActive() && resource.data.uid == request.auth.uid);
+    }
+
+    // Buchungen
+    match /scans/{id} {
+      // Mitglieder sehen nur ihre eigenen Buchungen, Admins und Vorstand alle
+      allow read: if isReader() || (signedIn() && resource.data.uid == request.auth.uid);
+
+      // Mitglieder buchen für sich selbst; Admins dürfen auch nachtragen
+      allow create: if isAdmin() || (
+        isActive()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'day', 'p', 'src', 't', 'at', 'who'])
+        && request.resource.data.day is string
+        && request.resource.data.p is string
+        && request.resource.data.t is number
+        && request.resource.data.who is string
+        && request.resource.data.who.size() <= 40
+        // Jugendschutz: Minderjährige dürfen keinen Alkohol buchen
+        && (profile().get('minor', false) != true || !productIsAlc(request.resource.data.p))
+      );
+
+      // Eigene Buchung zurücknehmen; Admins dürfen alles
+      allow delete: if isAdmin() || (isActive() && resource.data.uid == request.auth.uid);
+      allow update: if isAdmin();
+    }
+  }
+}
