@@ -55,6 +55,8 @@ service cloud.firestore {
     function stdActive()  { return isActive() && profile().get('std', false) == true; }
     function isStdBoard() { return stdActive() && profile().get('sr', '') == 'vorstand'; }
     function isStdAdmin() { return stdActive() && profile().get('sr', '') == 'admin'; }
+    function isStdStaff() { return isSuper() || isStdAdmin(); }
+    function stdAll()     { return isStdStaff() || isStdBoard(); }
     function stundeOk(d) {
       return d.keys().hasOnly(['uid', 'name', 'datum', 'taetigkeit', 'stunden', 'notiz', 't'])
         && d.name is string && d.name.size() >= 1 && d.name.size() <= 40
@@ -299,6 +301,32 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid
         && request.resource.data.name == profile().get('name', ''));
       allow delete: if isSuper() || isStdAdmin() || (stdActive() && resource.data.uid == request.auth.uid);
+    }
+
+    // Stundentracker: Einstellungen (Soll, Betrag je fehlender Stunde, Frist, Rechnungsangaben)
+    match /stdcfg/{id} {
+      allow read: if isSuper() || stdActive();
+      allow write: if isStdStaff()
+        && request.resource.data.keys().hasOnly(['soll', 'rate', 'days', 'name', 'addr', 'iban', 'bic', 'bank', 'note', 't', 'by']);
+    }
+    // Stundentracker: individuelles Soll pro Mitglied und Jahr (Dokument-ID = Nutzer-ID + "_" + Jahr)
+    match /stdsoll/{id} {
+      allow read: if stdAll() || (stdActive() && resource.data.uid == request.auth.uid);
+      allow write: if isStdStaff();
+    }
+    // Stundentracker: Erinnerungen – Admins schreiben, das Mitglied liest eigene und markiert sie als gelesen
+    match /stdrem/{id} {
+      allow read: if stdAll() || (stdActive() && resource.data.uid == request.auth.uid);
+      allow create, delete: if isStdStaff();
+      allow update: if isStdStaff() || (stdActive() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seen']));
+    }
+    // Stundentracker: Rechnungen (Dokument-ID = Nutzer-ID + "_" + Jahr) – Admins erstellen, markieren bezahlt, stornieren
+    match /stdinv/{id} {
+      allow read: if stdAll() || (stdActive() && resource.data.uid == request.auth.uid);
+      allow create, delete: if isStdStaff();
+      allow update: if isStdStaff() || (stdActive() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seen']));
     }
 
     // Buchungen

@@ -41,7 +41,7 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
 .btn.dng{color:var(--pen)}
 .btn:disabled{opacity:.5}
 .row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
-.tabs{display:flex;gap:8px;margin-bottom:6px}.tabs button{flex:1;padding:10px;border:1px solid var(--line);background:transparent;border-radius:10px;font:inherit;color:var(--mu)}.tabs button.on{background:var(--wy2);color:var(--ink);border-color:var(--wy);font-weight:700}
+.tabs{display:flex;gap:6px;margin-bottom:6px}.tabs button{flex:1;min-width:0;padding:10px 4px;font-size:.88rem;border:1px solid var(--line);background:transparent;border-radius:10px;font:inherit;color:var(--mu)}.tabs button.on{background:var(--wy2);color:var(--ink);border-color:var(--wy);font-weight:700}
 .pw{position:relative}.pw input{padding-right:50px}.eye{position:absolute;right:2px;top:0;height:46px;width:46px;border:0;background:transparent;font-size:18px;color:var(--mu)}
 .mh{display:flex;justify-content:space-between;font-weight:700;margin:18px 2px 6px;font-family:Oswald,system-ui,sans-serif}
 .item{display:flex;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
@@ -53,6 +53,11 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
 .err{background:var(--wy2);border:1px solid var(--wy);border-radius:10px;padding:10px 12px;margin:12px 0;font-size:.9rem}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:30}
 .modal>div{background:var(--card);border-radius:16px;padding:18px;width:100%;max-width:380px;max-height:90vh;overflow:auto}
+.whoami{font-size:.85rem;background:var(--wy2);border:1px solid var(--wy);border-radius:20px;display:inline-block;padding:3px 12px;margin:2px 0 8px;max-width:100%;overflow-wrap:anywhere}
+.bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin:8px 0 4px}.bar i{display:block;height:100%;background:var(--wy)}.bar i.ok{background:var(--pet)}
+.okTxt{color:var(--pet)}.warnTxt{color:var(--pen)}
+.msg.new{border-color:var(--wy);box-shadow:inset 0 0 0 1px var(--wy)}.msg p{margin:6px 0}.pre{white-space:pre-line}
+textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;min-height:80px;resize:vertical}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 </style>
 </head>
@@ -67,6 +72,7 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
 <main>
   <h1>🐝 Wexhainer Stunden Tracker 🕒</h1>
   <div class="ver" id="ver"></div>
+  <div class="whoami" id="whoami" hidden></div>
   <div class="mut" id="sum" hidden></div>
   <div class="err" id="err" hidden></div>
 
@@ -103,6 +109,7 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
   </section>
 
   <section id="vNew" hidden>
+    <div id="myStd"></div>
     <div class="card">
       <h2 id="ft">Neuer Eintrag</h2>
       <label for="datum">Datum</label><input id="datum" type="date">
@@ -151,6 +158,20 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
   </section>
 
   <section id="vAdm" hidden>
+    <div class="tabs" id="admTabs"><button data-t="pf" class="on">Pflichtstunden</button><button data-t="mg">Mitglieder</button><button data-t="cfg">Einstellungen</button></div>
+    <div id="admPf">
+      <div class="card">
+        <div class="row">
+          <div><label for="pfYear">Jahr</label><select id="pfYear"></select></div>
+          <div><label for="pfF">Anzeigen</label><select id="pfF"><option value="">Alle</option><option value="open">Mit Fehlstunden</option><option value="inv">Mit Rechnung</option><option value="unpaid">Rechnung offen</option></select></div>
+        </div>
+        <p class="mut" id="pfSum" style="font-size:.85rem"></p>
+        <button class="btn sec" id="pfRemAll">🔔 Alle mit Fehlstunden erinnern</button>
+        <button class="btn sec" id="pfInvAll">🧾 Rechnungen für alle mit Fehlstunden erstellen</button>
+      </div>
+      <div id="pfList"></div>
+    </div>
+    <div id="admMg" hidden>
     <div class="card">
       <h2>Mitglieder und Rechte</h2>
       <small class="mut">Die Konten sind dieselben wie in der Getränke-Strichliste, die Rollen sind getrennt: Getränke-Admins haben hier keine Rechte, Stunden-Admins keine in der Strichliste. Der Stundentracker braucht eine eigene Freigabe.</small>
@@ -158,10 +179,32 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
       <select id="uf"><option value="">Alle</option><option value="wait">Wartende Konten</option><option value="nostd">Ohne Freigabe für den Stundentracker</option><option value="std">Mit Freigabe</option></select>
     </div>
     <div id="ml"></div>
+    </div>
+    <div id="admCfg" hidden>
+      <div class="card">
+        <h2>Pflichtstunden</h2>
+        <div class="row">
+          <div><label for="cfgSoll">Soll pro Jahr (Stunden)</label><input id="cfgSoll" type="text" inputmode="decimal"></div>
+          <div><label for="cfgRate">€ je fehlender Stunde</label><input id="cfgRate" type="text" inputmode="decimal"></div>
+        </div>
+        <label for="cfgDays">Zahlungsfrist (Tage)</label><input id="cfgDays" type="text" inputmode="numeric">
+        <h2 style="margin-top:20px">Angaben auf der Rechnung</h2>
+        <label for="cfgName">Vereinsname</label><input id="cfgName" type="text">
+        <label for="cfgAddr">Anschrift</label><textarea id="cfgAddr" placeholder="Straße Nr.&#10;PLZ Ort"></textarea>
+        <label for="cfgIban">IBAN</label><input id="cfgIban" type="text" autocapitalize="characters" spellcheck="false">
+        <div class="row">
+          <div><label for="cfgBic">BIC</label><input id="cfgBic" type="text" autocapitalize="characters" spellcheck="false"></div>
+          <div><label for="cfgBank">Bank</label><input id="cfgBank" type="text"></div>
+        </div>
+        <label for="cfgNote">Hinweistext auf der Rechnung (optional)</label><textarea id="cfgNote"></textarea>
+        <button class="btn" id="cfgSave">Speichern</button>
+        <small class="mut" style="display:block;margin-top:8px">Änderungen gelten für alle Jahre ohne individuelles Soll. Bereits erstellte Rechnungen bleiben unverändert.</small>
+      </div>
+    </div>
   </section>
 </main>
 
-<div class="modal" id="modal" hidden><div><p id="mt" style="margin-top:0;white-space:pre-line"></p><input id="mi" hidden style="margin-bottom:10px"><div id="mb"></div></div></div>
+<div class="modal" id="modal" hidden><div><p id="mt" style="margin-top:0;white-space:pre-line"></p><input id="mi" hidden style="margin-bottom:10px"><textarea id="mta" hidden style="margin-bottom:10px;min-height:170px"></textarea><div id="mb"></div></div></div>
 <div id="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -183,7 +226,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -195,9 +238,10 @@ let toastT;
 function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
 
 /* ---------- Zustand ---------- */
-const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], view: 'new', editId: null, registering: false, dbError: '' };
+const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], view: 'new', editId: null, registering: false, dbError: '' };
 let F = {}, db, auth, rowsKey = '';
-const unsub = { me: null, rows: null, users: null };
+const unsub = { me: null, rows: null, users: null, cfg: null, soll: null, inv: null, rem: null };
+const DATA_L = ['rows', 'cfg', 'soll', 'inv', 'rem'];
 const stopL = k => { if (unsub[k]) { unsub[k](); unsub[k] = null; } };
 
 const isBoard = () => !S.isSuper && !!S.meDoc && S.meDoc.sr === 'vorstand';
@@ -245,7 +289,7 @@ function fail(where) {
 /* ---------- Dialoge ---------- */
 function ask(msg, btns) {
   return new Promise(res => {
-    $('mt').textContent = msg; $('mi').hidden = true;
+    $('mt').textContent = msg; $('mi').hidden = true; $('mta').hidden = true;
     const b = $('mb'); b.replaceChildren();
     btns.forEach((t, i) => { const x = el('button', i === 0 ? 'btn' : 'btn sec', t); x.onclick = () => { $('modal').hidden = true; res(i); }; b.append(x); });
     $('modal').hidden = false;
@@ -253,7 +297,7 @@ function ask(msg, btns) {
 }
 function askIn(msg, ph, val) {
   return new Promise(res => {
-    $('mt').textContent = msg; const i = $('mi'); i.hidden = false; i.value = val || ''; i.placeholder = ph || '';
+    $('mt').textContent = msg; $('mta').hidden = true; const i = $('mi'); i.hidden = false; i.value = val || ''; i.placeholder = ph || '';
     const b = $('mb'); b.replaceChildren();
     const ok = el('button', 'btn', 'OK'), no = el('button', 'btn sec', 'Abbrechen');
     ok.onclick = () => { $('modal').hidden = true; res(i.value.trim()); };
@@ -261,9 +305,19 @@ function askIn(msg, ph, val) {
     b.append(ok, no); $('modal').hidden = false; setTimeout(() => i.focus(), 50);
   });
 }
+function askText(msg, val) {
+  return new Promise(res => {
+    $('mt').textContent = msg; $('mi').hidden = true; const t = $('mta'); t.hidden = false; t.value = val || '';
+    const b = $('mb'); b.replaceChildren();
+    const ok = el('button', 'btn', 'Senden'), no = el('button', 'btn sec', 'Abbrechen');
+    ok.onclick = () => { $('modal').hidden = true; t.hidden = true; res(t.value.trim()); };
+    no.onclick = () => { $('modal').hidden = true; t.hidden = true; res(null); };
+    b.append(ok, no); $('modal').hidden = false;
+  });
+}
 const PRIVACY = 'Datenschutzhinweis (Platzhalter – bitte vom Verein prüfen und anpassen)\n\n'
   + 'Gespeichert werden: Name, E-Mail-Adresse, Zeitpunkt der Zustimmung sowie deine Arbeitsstunden (Datum, Tätigkeit, Stunden, Notiz).\n\n'
-  + 'Wer sieht was: Du siehst deine eigenen Einträge. Der Vorstand und der Super-Admin sehen die Einträge aller Mitglieder.\n\n'
+  + 'Wer sieht was: Du siehst deine eigenen Einträge. Der Vorstand, die Stunden-Admins und der Super-Admin sehen die Einträge aller Mitglieder. Admins können dir Erinnerungen und Rechnungen über nicht geleistete Pflichtstunden schicken; diese siehst nur du und die Admins bzw. der Vorstand.\n\n'
   + 'Wo: Die Daten liegen bei Google Firebase (Authentication und Firestore). Zum Löschen deiner Daten wende dich an den Super-Admin.';
 
 /* ---------- Firebase ---------- */
@@ -275,8 +329,8 @@ async function initFirebase() {
   catch (e) { db = F.getFirestore(app); }
   auth = F.getAuth(app);
   F.onAuthStateChanged(auth, async u => {
-    stopL('me'); stopL('rows'); stopL('users'); rowsKey = '';
-    Object.assign(S, { user: u, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], editId: null, dbError: '' });
+    stopL('me'); stopL('users'); DATA_L.forEach(stopL); rowsKey = '';
+    Object.assign(S, { user: u, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], editId: null, dbError: '' });
     if (!u) { render(); return; }
     render();
     unsub.me = F.onSnapshot(F.doc(db, 'users', u.uid), snap => {
@@ -296,13 +350,16 @@ async function initFirebase() {
 function syncRows() {
   const key = access() === 'ok' ? (canAll() ? 'all' : 'mine') + ':' + S.user.uid : '';
   if (key === rowsKey) return;
-  stopL('rows'); rowsKey = key; S.rows = [];
+  DATA_L.forEach(stopL); rowsKey = key; Object.assign(S, { rows: [], cfg: null, soll: [], inv: [], rem: [] });
   if (!key) return;
-  const c = F.collection(db, 'stunden');
-  const q = canAll() ? c : F.query(c, F.where('uid', '==', S.user.uid));
-  unsub.rows = F.onSnapshot(q, snap => {
-    S.rows = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); S.dbError = ''; render();
-  }, fail('Stunden'));
+  // Mitglieder lesen nur eigene Dokumente, Vorstand und Admins alle
+  const q = name => canAll() ? F.collection(db, name) : F.query(F.collection(db, name), F.where('uid', '==', S.user.uid));
+  const docs = snap => snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  unsub.rows = F.onSnapshot(q('stunden'), snap => { S.rows = docs(snap); S.dbError = ''; render(); }, fail('Stunden'));
+  unsub.cfg = F.onSnapshot(F.doc(db, 'stdcfg', 'main'), snap => { S.cfg = snap.exists() ? snap.data() : {}; render(); }, fail('Einstellungen'));
+  unsub.soll = F.onSnapshot(q('stdsoll'), snap => { S.soll = docs(snap); render(); }, fail('Soll'));
+  unsub.inv = F.onSnapshot(q('stdinv'), snap => { S.inv = docs(snap); render(); }, fail('Rechnungen'));
+  unsub.rem = F.onSnapshot(q('stdrem'), snap => { S.rem = docs(snap); render(); }, fail('Erinnerungen'));
 }
 function syncUsers() {
   if (access() !== 'ok' || !canEditAll() || S.view !== 'adm') { stopL('users'); return; }
@@ -325,6 +382,7 @@ function fillSelect(sel, values, label) {
 function render() {
   const a = access(), ok = a === 'ok';
   $('ver').textContent = 'Version ' + APP_VERSION;
+  renderWho();
   $('vLoad').hidden = a !== 'load'; $('vAuth').hidden = a !== 'auth'; $('vGate').hidden = !GATE[a];
   $('nav').hidden = !ok; $('nadm').hidden = !(ok && canEditAll());
   if (S.view === 'adm' && !(ok && canEditAll())) { S.view = 'new'; syncUsers(); }
@@ -337,7 +395,7 @@ function render() {
     $('gProfile').hidden = a !== 'noprofile';
   }
   if (!ok) return;
-  renderList(); renderData(); if (S.view === 'adm') renderAdm();
+  renderList(); renderData(); renderMyStd(); if (S.view === 'adm') renderAdm();
 }
 function yearsOf(rows) { const s = {}; rows.forEach(e => { s[e.datum.slice(0, 4)] = 1; }); return Object.keys(s).sort().reverse(); }
 function renderList() {
@@ -537,6 +595,11 @@ $('ba').onclick = async () => {
 
 /* ---------- Verwaltung (Super-Admin) ---------- */
 function renderAdm() {
+  document.querySelectorAll('#admTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === admTab));
+  $('admPf').hidden = admTab !== 'pf'; $('admMg').hidden = admTab !== 'mg'; $('admCfg').hidden = admTab !== 'cfg';
+  if (admTab === 'pf') renderPf(); else if (admTab === 'mg') renderMembers(); else fillCfgForm();
+}
+function renderMembers() {
   const f = $('uf').value, box = $('ml'); box.replaceChildren();
   const stat = {}; S.rows.forEach(e => { const s = stat[e.uid] || (stat[e.uid] = { n: 0, h: 0 }); s.n++; s.h += e.stunden; });
   const list = S.users.filter(u => !u.deleted).filter(u => f === 'wait' ? u.pending : f === 'nostd' ? u.std !== true : f === 'std' ? u.std === true : true)
@@ -559,7 +622,7 @@ function renderAdm() {
     c.append(l, b); box.append(c);
   });
 }
-$('uf').onchange = renderAdm;
+$('uf').onchange = renderMembers;
 async function memberMenu(u) {
   // Super-Admin: alles. Stunden-Admin: Freigabe und Vorstand für bereits freigeschaltete Konten, nicht für Admins und nicht für sich selbst.
   const self = u.id === S.user.uid, sup = S.isSuper, adm = u.sr === 'admin', o = [];
@@ -601,6 +664,253 @@ async function rename(u, name) {
     for (const x of all) await x.commit();
     toast('Name geändert (auch in ' + snap.size + ' Einträgen).');
   } catch (e) { toast('Umbenennen fehlgeschlagen: ' + (e.code || e.message)); }
+}
+
+/* ---------- Pflichtstunden, Erinnerungen, Rechnungen ---------- */
+const CFG_DEF = { soll: 6, rate: 0, days: 14, name: '', addr: '', iban: '', bic: '', bank: '', note: '' };
+const cfg = () => Object.assign({}, CFG_DEF, S.cfg || {});
+const round2 = n => Math.round(n * 100) / 100;
+const eur = n => (n || 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+const curYear = () => String(new Date().getFullYear());
+const sollFor = (uid, y) => { const d = S.soll.find(x => x.id === uid + '_' + y); return d ? +d.soll : +cfg().soll; };
+const istFor = (uid, y) => round2(S.rows.filter(e => e.uid === uid && e.datum.slice(0, 4) === String(y)).reduce((s, e) => s + e.stunden, 0));
+const addDays = (iso, n) => { const [a, b, c] = iso.split('-').map(Number); const d = new Date(a, b - 1, c + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const roleLabel = () => S.isSuper ? 'Super-Admin' : isStdAdm() ? 'Stunden-Admin' : isBoard() ? 'Vorstand' : 'Mitglied';
+const seenSent = new Set();
+
+function renderWho() {
+  const w = $('whoami');
+  w.hidden = !S.user;
+  if (!S.user) return;
+  w.textContent = '👤 ' + (access() === 'ok' ? myName() + ' · ' + roleLabel() : (S.user.email || ''));
+}
+
+function renderMyStd() {
+  const box = $('myStd'); box.replaceChildren();
+  const y = curYear(), uid = S.user.uid, c = cfg();
+  const soll = sollFor(uid, y), ist = istFor(uid, y), diff = round2(ist - soll);
+  const card = el('div', 'card');
+  card.append(el('h2', null, 'Pflichtstunden ' + y));
+  card.append(el('div', null, nf(ist) + ' von ' + nf(soll) + ' Stunden geleistet'));
+  const bar = el('div', 'bar'), fill = el('i');
+  fill.style.width = (soll > 0 ? Math.min(100, ist / soll * 100) : 100) + '%';
+  if (diff >= 0) fill.className = 'ok';
+  bar.append(fill); card.append(bar);
+  const inv = S.inv.find(i => i.uid === uid && String(i.year) === y);
+  let t;
+  if (soll <= 0) t = 'Für dich gilt in diesem Jahr kein Soll.';
+  else if (diff < 0 && inv) t = 'Noch ' + nf(-diff) + (diff === -1 ? ' Stunde' : ' Stunden') + ' offen – dafür wurde die Rechnung ' + inv.nr + ' erstellt.';
+  else if (diff < 0) t = 'Noch ' + nf(-diff) + (diff === -1 ? ' Stunde' : ' Stunden') + ' offen' + (c.rate > 0 ? ' – sonst fallen ' + eur(-diff * c.rate) + ' an (' + eur(c.rate) + ' je Stunde).' : '.');
+  else t = diff > 0 ? 'Soll erfüllt – ' + nf(diff) + ' Stunden mehr gearbeitet. Danke!' : 'Soll erfüllt. Danke!';
+  card.append(el('p', diff < 0 && soll > 0 ? 'warnTxt' : 'okTxt', t));
+  box.append(card);
+
+  S.inv.filter(r => r.uid === uid).sort((a, b) => b.year - a.year).forEach(r => {
+    const m = el('div', 'card msg' + (r.paid ? '' : ' new'));
+    m.append(el('b', null, '🧾 Rechnung ' + r.nr + ' – Pflichtstunden ' + r.year),
+      el('p', null, nf(r.fehl) + ' fehlende Stunden × ' + eur(r.rate) + ' = ' + eur(r.betrag)),
+      el('small', r.paid ? 'okTxt' : 'warnTxt', r.paid ? 'Bezahlt' + (r.paidAt ? ' am ' + dfmt(r.paidAt) : '') + '. Danke!' : 'Offen – bitte bis ' + dfmt(r.due) + ' überweisen.'));
+    const b = el('button', 'btn sec', 'Rechnung als PDF'); b.onclick = () => invPdf(r); m.append(b);
+    box.append(m);
+    if (!r.seen && !seenSent.has('i' + r.id)) { seenSent.add('i' + r.id); fire(F.updateDoc(F.doc(db, 'stdinv', r.id), { seen: true }), 'Rechnung'); }
+  });
+  S.rem.filter(r => r.uid === uid && String(r.year) === y).sort((a, b) => b.t - a.t).slice(0, 3).forEach(r => {
+    const m = el('div', 'card msg' + (r.seen ? '' : ' new'));
+    m.append(el('b', null, '🔔 Erinnerung vom ' + new Date(r.t).toLocaleDateString('de-DE') + (r.byName ? ' (' + r.byName + ')' : '')), el('p', 'pre', r.text));
+    if (!r.seen) { const b = el('button', 'btn sec', 'Gelesen'); b.onclick = () => fire(F.updateDoc(F.doc(db, 'stdrem', r.id), { seen: true }), 'Erinnerung'); m.append(b); }
+    box.append(m);
+  });
+}
+
+/* --- Verwaltung: Unterbereiche --- */
+let admTab = 'pf', cfgDirty = false;
+$('admTabs').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; admTab = b.dataset.t; if (admTab === 'cfg') { cfgDirty = false; fillCfgForm(); } renderAdm(); };
+function pfYears() {
+  const s = {}; s[curYear()] = 1;
+  S.rows.forEach(e => { s[e.datum.slice(0, 4)] = 1; }); S.inv.forEach(i => { s[String(i.year)] = 1; });
+  return Object.keys(s).sort().reverse();
+}
+function pfData(y) {
+  const c = cfg();
+  return S.users.filter(u => !u.deleted && (u.std === true || S.inv.some(i => i.uid === u.id && String(i.year) === y)))
+    .map(u => {
+      const soll = sollFor(u.id, y), ist = istFor(u.id, y), fehl = round2(Math.max(0, soll - ist)), mehr = round2(Math.max(0, ist - soll));
+      return { u, soll, ist, fehl, mehr, betrag: round2(fehl * c.rate), inv: S.inv.find(i => i.id === u.id + '_' + y),
+        rems: S.rem.filter(r => r.uid === u.id && String(r.year) === y).sort((a, b) => b.t - a.t), indiv: S.soll.some(x => x.id === u.id + '_' + y) };
+    })
+    .sort((a, b) => String(a.u.name || '').localeCompare(String(b.u.name || ''), 'de'));
+}
+function renderPf() {
+  const sel = $('pfYear'), keep = sel.value || curYear(), ys = pfYears();
+  sel.replaceChildren(); ys.forEach(x => { const o = el('option', null, x); o.value = x; sel.append(o); }); sel.value = ys.indexOf(keep) > -1 ? keep : curYear();
+  const y = sel.value, f = $('pfF').value, c = cfg(), all = pfData(y);
+  const open = all.filter(d => d.fehl > 0), invs = all.filter(d => d.inv), unpaid = invs.filter(d => !d.inv.paid);
+  const sumF = round2(open.reduce((s, d) => s + d.fehl, 0)), sumE = round2(open.reduce((s, d) => s + (d.inv ? d.inv.betrag : d.betrag), 0));
+  $('pfSum').textContent = all.length + ' Mitglieder · ' + open.length + ' mit Fehlstunden (' + nf(sumF) + ' h' + (c.rate > 0 ? ', ' + eur(sumE) : '') + ')'
+    + ' · Rechnungen: ' + unpaid.length + ' offen (' + eur(unpaid.reduce((s, d) => s + d.inv.betrag, 0)) + '), ' + (invs.length - unpaid.length) + ' bezahlt'
+    + ' · Soll ' + nf(c.soll) + ' h, ' + (c.rate > 0 ? eur(c.rate) + ' je fehlender Stunde' : 'Betrag je Stunde noch nicht festgelegt');
+  const box = $('pfList'); box.replaceChildren();
+  const list = all.filter(d => f === 'open' ? d.fehl > 0 : f === 'inv' ? !!d.inv : f === 'unpaid' ? d.inv && !d.inv.paid : true);
+  if (!list.length) { box.append(el('p', 'mut', 'Keine Mitglieder in dieser Auswahl.')); return; }
+  list.forEach(d => {
+    const it = el('div', 'item'), l = el('div', 'il'), tags = el('div');
+    const tag = (t, cls) => tags.append(el('span', 'tag ' + (cls || ''), t));
+    l.append(el('b', null, d.u.name || '(ohne Name)'));
+    l.append(el('small', null, nf(d.ist) + ' / ' + nf(d.soll) + ' h · ' + (d.soll <= 0 ? 'kein Soll' : d.fehl > 0 ? 'fehlen ' + nf(d.fehl) + ' h' + (c.rate > 0 && !d.inv ? ' (' + eur(d.betrag) + ')' : '') : d.mehr > 0 ? nf(d.mehr) + ' h mehr' : 'erfüllt')));
+    if (d.fehl > 0) tag('offen', 'warn'); else if (d.soll > 0) tag('erfüllt', 'ok');
+    if (d.indiv) tag('Soll individuell');
+    if (d.u.blocked) tag('gesperrt', 'warn');
+    if (d.rems.length) tag('erinnert ' + d.rems.length + '× (zuletzt ' + new Date(d.rems[0].t).toLocaleDateString('de-DE') + ')');
+    if (d.inv) tag('Rechnung ' + d.inv.nr + ': ' + eur(d.inv.betrag) + (d.inv.paid ? ' bezahlt' : ' offen'), d.inv.paid ? 'ok' : 'warn');
+    l.append(tags);
+    const b = el('button', 'ic', '⋯'); b.setAttribute('aria-label', 'Aktionen'); b.onclick = () => pfMenu(d, y);
+    it.append(l, b); box.append(it);
+  });
+}
+$('pfYear').onchange = renderPf; $('pfF').onchange = renderPf;
+
+const REM_TPL = 'Hallo {name},\nfür {jahr} hast du bisher {ist} von {soll} Pflichtstunden geleistet – es fehlen noch {fehl} Stunden.\nBitte leiste die Stunden und trage sie in der App ein.';
+const REM_TPL_RATE = '\nNicht geleistete Stunden werden mit {satz} je Stunde berechnet (derzeit {betrag}).';
+function fillTpl(tpl, d, y) {
+  const c = cfg();
+  return tpl.replace(/\{name\}/g, d.u.name || '').replace(/\{jahr\}/g, y).replace(/\{ist\}/g, nf(d.ist)).replace(/\{soll\}/g, nf(d.soll))
+    .replace(/\{fehl\}/g, nf(d.fehl)).replace(/\{satz\}/g, eur(c.rate)).replace(/\{betrag\}/g, eur(d.betrag));
+}
+const remDoc = (d, y, text) => ({ uid: d.u.id, name: (d.u.name || '').slice(0, 40), year: +y, text: text.slice(0, 1000), t: Date.now(), by: S.user.uid, byName: myName().slice(0, 40), seen: false });
+async function remindOne(d, y) {
+  const text = await askText('Erinnerung an ' + d.u.name + ' (erscheint beim nächsten Öffnen der App)', fillTpl(REM_TPL + (cfg().rate > 0 ? REM_TPL_RATE : ''), d, y));
+  if (!text) return;
+  fire(F.addDoc(F.collection(db, 'stdrem'), remDoc(d, y, text)), 'Erinnerung'); toast('Erinnerung an ' + d.u.name + ' gesendet.');
+}
+$('pfRemAll').onclick = async () => {
+  const y = $('pfYear').value, list = pfData(y).filter(d => d.fehl > 0 && !d.u.blocked);
+  if (!list.length) { toast('Niemand hat in ' + y + ' Fehlstunden.'); return; }
+  const tpl = await askText('Erinnerung an ' + list.length + ' Mitglieder mit Fehlstunden in ' + y + '.\nPlatzhalter: {name} {jahr} {ist} {soll} {fehl} {satz} {betrag}', REM_TPL + (cfg().rate > 0 ? REM_TPL_RATE : ''));
+  if (!tpl) return;
+  const b = F.writeBatch(db); list.forEach(d => b.set(F.doc(F.collection(db, 'stdrem')), remDoc(d, y, fillTpl(tpl, d, y))));
+  fire(b.commit(), 'Erinnerungen'); toast(list.length + ' Erinnerungen gesendet.');
+};
+
+function invCheck() {
+  const c = cfg(), miss = [];
+  if (!(c.rate > 0)) miss.push('Betrag je Stunde');
+  if (!c.name) miss.push('Vereinsname');
+  if (!c.iban) miss.push('IBAN');
+  if (miss.length) { ask('Für Rechnungen fehlt noch: ' + miss.join(', ') + '.\nBitte unter Verwaltung → Einstellungen eintragen.', ['OK']); return false; }
+  return true;
+}
+function nextNr(y, used) {
+  let max = 0;
+  S.inv.concat(used || []).forEach(i => { if (String(i.year) === y) { const n = parseInt(String(i.nr).split('-')[1], 10); if (n > max) max = n; } });
+  return y + '-' + String(max + 1).padStart(3, '0');
+}
+function invDoc(d, y, nr) {
+  const c = cfg(), today = todayISO();
+  return { uid: d.u.id, name: (d.u.name || '').slice(0, 40), email: d.u.email || '', year: +y, nr, soll: d.soll, ist: d.ist, fehl: d.fehl, rate: +c.rate, betrag: d.betrag,
+    date: today, due: addDays(today, +c.days || 14), paid: false, paidAt: '', seen: false, t: Date.now(), by: S.user.uid, byName: myName().slice(0, 40),
+    club: { name: c.name, addr: c.addr, iban: c.iban, bic: c.bic, bank: c.bank, note: c.note } };
+}
+const yearOpen = y => y >= curYear() ? '\nAchtung: Das Jahr ' + y + ' ist noch nicht vorbei.' : '';
+async function invOne(d, y) {
+  if (!invCheck()) return;
+  if (await ask('Rechnung über ' + eur(d.betrag) + ' (' + nf(d.fehl) + ' h × ' + eur(cfg().rate) + ') an ' + d.u.name + ' erstellen?\nDas Mitglied sieht sie beim nächsten Öffnen der App.' + yearOpen(y), ['Rechnung erstellen', 'Abbrechen']) !== 0) return;
+  fire(F.setDoc(F.doc(db, 'stdinv', d.u.id + '_' + y), invDoc(d, y, nextNr(y))), 'Rechnung'); toast('Rechnung erstellt.');
+}
+$('pfInvAll').onclick = async () => {
+  const y = $('pfYear').value, list = pfData(y).filter(d => d.fehl > 0 && !d.inv);
+  if (!list.length) { toast('Keine offenen Fehlstunden ohne Rechnung in ' + y + '.'); return; }
+  if (!invCheck()) return;
+  const sum = round2(list.reduce((s, d) => s + d.betrag, 0));
+  if (await ask(list.length + ' Rechnungen für ' + y + ' über zusammen ' + eur(sum) + ' erstellen?\nDie Mitglieder sehen sie beim nächsten Öffnen der App.' + yearOpen(y), ['Erstellen', 'Abbrechen']) !== 0) return;
+  const b = F.writeBatch(db), used = [];
+  list.forEach(d => { const doc = invDoc(d, y, nextNr(y, used)); used.push(doc); b.set(F.doc(db, 'stdinv', d.u.id + '_' + y), doc); });
+  fire(b.commit(), 'Rechnungen'); toast(list.length + ' Rechnungen erstellt.');
+};
+async function pfMenu(d, y) {
+  const o = [];
+  if (d.fehl > 0) o.push('Erinnern');
+  if (!d.inv && d.fehl > 0) o.push('Rechnung erstellen');
+  if (d.inv) o.push('Rechnung als PDF', d.inv.paid ? 'Als unbezahlt markieren' : 'Als bezahlt markieren', 'Rechnung stornieren');
+  o.push('Soll für ' + y + ' anpassen');
+  if (d.indiv) o.push('Individuelles Soll entfernen');
+  o.push('Schließen');
+  const a = o[await ask(d.u.name + ' – ' + y + ': ' + nf(d.ist) + ' von ' + nf(d.soll) + ' h', o)];
+  const invRef = F.doc(db, 'stdinv', d.u.id + '_' + y), sollRef = F.doc(db, 'stdsoll', d.u.id + '_' + y);
+  if (a === 'Erinnern') remindOne(d, y);
+  else if (a === 'Rechnung erstellen') invOne(d, y);
+  else if (a === 'Rechnung als PDF') invPdf(d.inv);
+  else if (a === 'Als bezahlt markieren') { fire(F.updateDoc(invRef, { paid: true, paidAt: todayISO() }), 'Bezahlt'); toast('Als bezahlt markiert.'); }
+  else if (a === 'Als unbezahlt markieren') { fire(F.updateDoc(invRef, { paid: false, paidAt: '' }), 'Bezahlt'); toast('Wieder offen.'); }
+  else if (a === 'Rechnung stornieren') {
+    if (await ask('Rechnung ' + d.inv.nr + ' über ' + eur(d.inv.betrag) + ' an ' + d.u.name + ' stornieren? Sie verschwindet auch beim Mitglied.', ['Stornieren', 'Abbrechen']) === 0) { fire(F.deleteDoc(invRef), 'Stornieren'); toast('Rechnung storniert.'); }
+  } else if (a && a.startsWith('Soll für')) {
+    const v = await askIn('Soll für ' + d.u.name + ' in ' + y + ' (Stunden, z. B. 3 bei Eintritt zur Jahresmitte, 0 = befreit)', 'Stunden', String(d.soll).replace('.', ','));
+    if (v == null) return;
+    const n = parseFloat(v.replace(',', '.'));
+    if (!(n >= 0) || n > 1000) { toast('Bitte eine Zahl von 0 bis 1000 eingeben.'); return; }
+    fire(F.setDoc(sollRef, { uid: d.u.id, year: +y, soll: round2(n), t: Date.now(), by: S.user.uid }), 'Soll'); toast('Soll gespeichert.');
+  } else if (a === 'Individuelles Soll entfernen') { fire(F.deleteDoc(sollRef), 'Soll'); toast('Es gilt wieder das allgemeine Soll.'); }
+}
+
+/* --- Einstellungen --- */
+const CFG_FIELDS = { cfgSoll: 'soll', cfgRate: 'rate', cfgDays: 'days', cfgName: 'name', cfgAddr: 'addr', cfgIban: 'iban', cfgBic: 'bic', cfgBank: 'bank', cfgNote: 'note' };
+function fillCfgForm() {
+  if (cfgDirty) return;
+  const c = cfg();
+  Object.keys(CFG_FIELDS).forEach(id => { const v = c[CFG_FIELDS[id]]; $(id).value = typeof v === 'number' ? String(v).replace('.', ',') : (v || ''); });
+}
+Object.keys(CFG_FIELDS).forEach(id => { $(id).addEventListener('input', () => { cfgDirty = true; }); });
+$('cfgSave').onclick = () => {
+  const num = id => parseFloat(String($(id).value).replace(',', '.'));
+  const soll = num('cfgSoll'), rate = num('cfgRate'), days = parseInt($('cfgDays').value, 10);
+  if (!(soll >= 0) || soll > 1000) { toast('Soll: bitte 0 bis 1000 Stunden.'); return; }
+  if (!(rate >= 0) || rate > 10000) { toast('Betrag je Stunde: bitte 0 bis 10.000 €.'); return; }
+  if (!(days >= 0) || days > 365) { toast('Zahlungsfrist: bitte 0 bis 365 Tage.'); return; }
+  const iban = $('cfgIban').value.replace(/\s+/g, '').toUpperCase();
+  if (iban && !/^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$/.test(iban)) { toast('Die IBAN sieht ungültig aus.'); return; }
+  const txt = (id, n) => $(id).value.trim().slice(0, n);
+  const data = { soll: round2(soll), rate: round2(rate), days, name: txt('cfgName', 80), addr: txt('cfgAddr', 300), iban, bic: txt('cfgBic', 20).toUpperCase(), bank: txt('cfgBank', 80), note: txt('cfgNote', 600), t: Date.now(), by: S.user.uid };
+  fire(F.setDoc(F.doc(db, 'stdcfg', 'main'), data), 'Einstellungen');
+  cfgDirty = false; toast('Einstellungen gespeichert.');
+};
+
+/* --- Rechnung als PDF --- */
+async function loadJsPdf() {
+  if (window.jspdf) return window.jspdf.jsPDF;
+  await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload = res; s.onerror = rej; document.head.append(s); });
+  return window.jspdf.jsPDF;
+}
+async function invPdf(r) {
+  let J;
+  try { J = await loadJsPdf(); } catch (e) { toast('PDF-Bibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen.'); return; }
+  const c = r.club || {}, d = new J({ unit: 'mm', format: 'a4' }), L = 20, R = 190;
+  const m = n => eur(n).replace(/\s/g, ' ');
+  let y = 22;
+  d.setFont('helvetica', 'bold'); d.setFontSize(15); d.text(c.name || 'Verein', L, y);
+  d.setFont('helvetica', 'normal'); d.setFontSize(9); d.setTextColor(90);
+  String(c.addr || '').split(/\n|,\s*/).filter(Boolean).forEach(line => { y += 4.5; d.text(line.trim(), L, y); });
+  d.setTextColor(0); d.setFontSize(10);
+  y = 55; d.text(r.name || '', L, y); if (r.email) d.text(r.email, L, y + 5);
+  const info = [['Rechnungsnummer', r.nr], ['Rechnungsdatum', dfmt(r.date)], ['Zahlbar bis', dfmt(r.due)]];
+  info.forEach((p, i) => { d.setTextColor(90); d.text(p[0], 125, 55 + i * 5.5); d.setTextColor(0); d.text(p[1], R, 55 + i * 5.5, { align: 'right' }); });
+  y = 85; d.setFont('helvetica', 'bold'); d.setFontSize(13); d.text('Rechnung: nicht geleistete Arbeitsstunden ' + r.year, L, y);
+  d.setFont('helvetica', 'normal'); d.setFontSize(10);
+  y += 9; d.text(d.splitTextToSize('Hallo ' + (r.name || '') + ', für das Jahr ' + r.year + ' gilt ein Soll von ' + nf(r.soll) + ' Arbeitsstunden. Für die nicht geleisteten Stunden stellen wir dir folgenden Betrag in Rechnung:', R - L), L, y);
+  y += 16;
+  const rows = [['Pflichtstunden (Soll) ' + r.year, nf(r.soll) + ' h'], ['Geleistete Stunden', nf(r.ist) + ' h'], ['Fehlende Stunden', nf(r.fehl) + ' h'], ['Betrag je fehlender Stunde', m(r.rate)]];
+  d.setDrawColor(200);
+  rows.forEach(p => { d.text(p[0], L, y); d.text(p[1], R, y, { align: 'right' }); y += 3; d.line(L, y, R, y); y += 5.5; });
+  d.setFont('helvetica', 'bold'); d.setFontSize(12); d.text('Gesamtbetrag', L, y + 1); d.text(m(r.betrag), R, y + 1, { align: 'right' });
+  d.setFont('helvetica', 'normal'); d.setFontSize(10);
+  y += 14; d.text('Bitte überweise den Betrag bis zum ' + dfmt(r.due) + ' auf folgendes Konto:', L, y);
+  y += 7;
+  const pay = [['Kontoinhaber', c.name || ''], ['IBAN', String(c.iban || '').replace(/(.{4})/g, '$1 ').trim()], ['BIC', c.bic || ''], ['Bank', c.bank || ''], ['Verwendungszweck', 'Pflichtstunden ' + r.year + ' / ' + r.nr + ' / ' + (r.name || '')]].filter(p => p[1]);
+  pay.forEach(p => { d.setTextColor(90); d.text(p[0], L, y); d.setTextColor(0); d.text(d.splitTextToSize(p[1], R - L - 40), L + 40, y); y += 6; });
+  if (r.paid) { y += 4; d.setTextColor(31, 107, 59); d.setFont('helvetica', 'bold'); d.text('Bezahlt' + (r.paidAt ? ' am ' + dfmt(r.paidAt) : ''), L, y); d.setTextColor(0); d.setFont('helvetica', 'normal'); y += 4; }
+  if (c.note) { y += 6; d.setFontSize(9); d.setTextColor(60); d.text(d.splitTextToSize(c.note, R - L), L, y); d.setTextColor(0); }
+  d.setFontSize(8); d.setTextColor(130); d.text('Erstellt mit dem Wexhainer Stundentracker', L, 287);
+  const fn = 'Rechnung-' + r.nr + '-' + String(r.name || '').replace(/[^A-Za-z0-9äöüÄÖÜß-]+/g, '_') + '.pdf';
+  if (download(fn, d.output('blob'), 'application/pdf')) toast('PDF erstellt.');
 }
 
 /* ---------- Start ---------- */
