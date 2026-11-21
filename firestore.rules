@@ -63,13 +63,23 @@ service cloud.firestore {
     function isStdStaff() { return isSuper() || isStdAdmin(); }
     function stdAll()     { return isStdStaff() || isStdBoard(); }
     function stundeOk(d) {
-      return d.keys().hasOnly(['uid', 'name', 'datum', 'taetigkeit', 'stunden', 'notiz', 't'])
+      return d.keys().hasOnly(['uid', 'name', 'datum', 'taetigkeit', 'stunden', 'notiz', 't', 'status', 'okBy', 'okByName', 'okAt', 'grund'])
         && d.name is string && d.name.size() >= 1 && d.name.size() <= 40
         && d.datum is string && d.datum.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && d.taetigkeit is string && d.taetigkeit.size() <= 200
         && d.notiz is string && d.notiz.size() <= 500
         && d.stunden is number && d.stunden > 0 && d.stunden <= 24
-        && d.t is number;
+        && d.t is number
+        && d.get('status', 'offen') in ['offen', 'ok', 'abgelehnt']
+        && d.get('grund', '') is string && d.get('grund', '').size() <= 300;
+    }
+    // Vom Mitglied gesendet: wartet auf Genehmigung, ohne Vermerk
+    function stundeOffen(d) { return d.get('status', '') == 'offen' && !d.keys().hasAny(['okBy', 'okByName', 'okAt', 'grund']); }
+    // Genehmigt/abgelehnt: Vermerk muss den entscheidenden Admin nennen
+    function entscheidungOk(d) {
+      return (d.get('status', 'offen') == 'offen' && !d.keys().hasAny(['okBy', 'okByName', 'okAt']))
+        || (d.get('status', 'offen') != 'offen' && d.get('okBy', '') == request.auth.uid
+            && d.get('okByName', '') == profile().get('name', '') && d.get('okAt', null) is number);
     }
     // Zählerfelder: alle Getränke, Bier und je eine Sorte
     function counterKeys() { return ['all', 'beer', 'c_radler', 'c_alkfrei', 'c_wein', 'c_wasser', 'c_soft', 'c_schnaps', 'c_sonst']; }
@@ -328,22 +338,30 @@ service cloud.firestore {
       allow delete: if isSuper() || (signedIn() && resource.data.uid == request.auth.uid && resource.data.status == 'open');
     }
 
-    // Wexhainer Stundentracker: Arbeitsstunden
-    // Mitglieder sehen und ändern nur ihre eigenen Einträge, Vorstand liest alle, Stunden-Admin und Super-Admin dürfen alles.
-    // Der Name im Eintrag muss dem Namen im Profil entsprechen (kein Fremdname möglich).
+    // Wexhainer Stundentracker: Arbeitsstunden mit Genehmigung
+    // Mitglieder senden Einträge (status 'offen'), Admins genehmigen oder lehnen ab und werden dabei vermerkt.
+    // Stunden-Admins entscheiden nie über eigene Einträge (Vier-Augen-Prinzip); der Super-Admin darf alles.
     match /stunden/{id} {
       allow read: if isSuper() || isStdAdmin() || isStdBoard() || (stdActive() && resource.data.uid == request.auth.uid);
-      allow create: if isSuper() || (stdActive() && stundeOk(request.resource.data)
+      allow create: if isSuper() || (stdActive() && stundeOk(request.resource.data) && stundeOffen(request.resource.data)
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.name == profile().get('name', ''));
       allow update: if isSuper()
-        // Stunden-Admin: fremde Einträge ändern, Person und Name bleiben gleich
-        || (isStdAdmin() && stundeOk(request.resource.data)
-            && request.resource.data.uid == resource.data.uid && request.resource.data.name == resource.data.name)
-        || (stdActive() && stundeOk(request.resource.data)
-        && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid
-        && request.resource.data.name == profile().get('name', ''));
-      allow delete: if isSuper() || isStdAdmin() || (stdActive() && resource.data.uid == request.auth.uid);
+        // Stunden-Admin: fremde Einträge ändern, genehmigen oder ablehnen; Person und Name bleiben gleich
+        || (isStdAdmin() && resource.data.uid != request.auth.uid && stundeOk(request.resource.data)
+            && request.resource.data.uid == resource.data.uid && request.resource.data.name == resource.data.name
+            && entscheidungOk(request.resource.data))
+        // Mitglied: eigene wartende oder abgelehnte Einträge ändern; sie gehen erneut zur Genehmigung
+        || (stdActive() && resource.data.uid == request.auth.uid && resource.data.get('status', 'ok') != 'ok'
+            && stundeOk(request.resource.data) && stundeOffen(request.resource.data)
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.name == profile().get('name', ''))
+        // Mitglied: in der Strichliste geänderten Namen übernehmen
+        || (stdActive() && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+            && request.resource.data.name == profile().get('name', ''));
+      allow delete: if isSuper() || (isStdAdmin() && resource.data.uid != request.auth.uid)
+        || (stdActive() && resource.data.uid == request.auth.uid && resource.data.get('status', 'ok') != 'ok');
     }
 
     // Stundentracker: Einstellungen (Soll, Betrag je fehlender Stunde, Frist, Rechnungsangaben)

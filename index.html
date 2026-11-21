@@ -29,7 +29,7 @@ h2{font:700 1.05rem/1.2 Oswald,system-ui,sans-serif;margin:0 0 10px}
 .mut{color:var(--mu)}small{font-size:.8rem}
 .ver{font-size:.75rem;color:var(--mu);margin:0 0 6px}
 nav{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;background:var(--card);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
-nav button{flex:1;border:0;background:transparent;font:inherit;font-size:.9rem;color:var(--mu);padding:15px 2px;min-height:50px}
+nav button{flex:1;min-width:0;white-space:nowrap;border:0;background:transparent;font:inherit;font-size:.84rem;color:var(--mu);padding:15px 2px;min-height:50px}
 nav button.on{color:var(--ink);font-weight:700;box-shadow:inset 0 -3px 0 var(--wy)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
 label{display:block;font-size:.8rem;color:var(--mu);margin:10px 0 4px}
@@ -43,7 +43,7 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
 .btn.dng{color:var(--pen)}
 .btn:disabled{opacity:.5}
 .row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
-.tabs{display:flex;gap:6px;margin-bottom:6px}.tabs button{flex:1;min-width:0;padding:10px 4px;font-size:.88rem;border:1px solid var(--line);background:transparent;border-radius:10px;font:inherit;color:var(--mu)}.tabs button.on{background:var(--wy2);color:var(--ink);border-color:var(--wy);font-weight:700}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}.tabs button{flex:1 1 40%;min-width:0;padding:10px 4px;font-size:.88rem;border:1px solid var(--line);background:transparent;border-radius:10px;font:inherit;color:var(--mu)}.tabs button.on{background:var(--wy2);color:var(--ink);border-color:var(--wy);font-weight:700}
 .pw{position:relative}.pw input{padding-right:50px}.eye{position:absolute;right:2px;top:0;height:46px;width:46px;border:0;background:transparent;font-size:18px;color:var(--mu)}
 .mh{display:flex;justify-content:space-between;font-weight:700;margin:18px 2px 6px;font-family:Oswald,system-ui,sans-serif}
 .item{display:flex;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
@@ -64,6 +64,9 @@ details.msg>summary{cursor:pointer;font-weight:700;list-style:none;display:flex;
 details.msg>summary::-webkit-details-marker{display:none}
 details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[open]>summary::after{content:'▴'}
 .danger{border-color:var(--pen)}.danger h2{color:var(--pen)}
+.st{font-size:.8rem}.st.ok{color:var(--pet)}.st.warn{color:var(--pen)}
+.ok-btns{display:flex;gap:6px;margin-top:8px}.ok-btns .btn{margin-top:0;min-height:42px;padding:8px 10px}
+.badge{display:inline-block;min-width:17px;height:17px;line-height:17px;padding:0 4px;margin-left:3px;border-radius:9px;background:var(--pen);color:#fff;font-size:.68rem;font-weight:700;vertical-align:2px;text-align:center}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 </style>
 </head>
@@ -123,7 +126,8 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
       <label for="tat">Tätigkeit</label><input id="tat" type="text" list="tl" placeholder="z. B. Platzpflege" autocomplete="off">
       <datalist id="tl"></datalist>
       <label for="notiz">Notiz (optional)</label><input id="notiz" type="text" autocomplete="off">
-      <button class="btn" id="bs">Speichern</button>
+      <button class="btn" id="bs">Senden</button>
+      <small class="mut" id="bsHint" style="display:block;margin-top:8px">Einträge zählen, sobald ein Admin sie genehmigt hat.</small>
       <button class="btn sec" id="bc" hidden>Abbrechen</button>
     </div>
   </section>
@@ -164,8 +168,18 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
   </section>
 
   <section id="vAdm" hidden>
-    <div class="tabs" id="admTabs"><button data-t="pf" class="on">Pflichtstunden</button><button data-t="mg">Mitglieder</button><button data-t="cfg">Einstellungen</button></div>
-    <div id="admPf">
+    <div class="tabs" id="admTabs"><button data-t="ok" class="on" id="tabOk">Genehmigen</button><button data-t="pf">Pflichtstunden</button><button data-t="mg">Mitglieder</button><button data-t="cfg">Einstellungen</button></div>
+    <div id="admOk">
+      <div class="card">
+        <div class="row">
+          <div><label for="okF">Anzeigen</label><select id="okF"><option value="offen">Wartend</option><option value="abgelehnt">Abgelehnt</option><option value="ok">Genehmigt</option></select></div>
+        </div>
+        <p class="mut" id="okSum" style="font-size:.85rem"></p>
+        <button class="btn" id="okAll">✓ Alle wartenden genehmigen</button>
+      </div>
+      <div id="okList"></div>
+    </div>
+    <div id="admPf" hidden>
       <div class="card">
         <div class="row">
           <div><label for="pfYear">Jahr</label><select id="pfYear"></select></div>
@@ -244,7 +258,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.3.7';
+const APP_VERSION = '1.4.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -266,6 +280,20 @@ const isBoard = () => !S.isSuper && !!S.meDoc && S.meDoc.sr === 'vorstand';
 const isStdAdm = () => !S.isSuper && !!S.meDoc && S.meDoc.sr === 'admin';
 const canAll = () => S.isSuper || isBoard() || isStdAdm();   // alle Stunden lesen
 const canEditAll = () => S.isSuper || isStdAdm();            // alle Stunden ändern/löschen, Verwaltung
+const stOf = e => e.status || 'ok';            // ältere Einträge ohne Status gelten als genehmigt
+const isOk = e => stOf(e) === 'ok';
+// Genehmigen: Super-Admin alles, Stunden-Admin nie eigene Einträge (Vier-Augen-Prinzip)
+const canDecide = e => S.isSuper || (isStdAdm() && e.uid !== S.user.uid);
+// Ändern/Löschen: Admins fremde Einträge, Mitglieder eigene, solange sie nicht genehmigt sind
+const canEdit = e => S.isSuper || (isStdAdm() && e.uid !== S.user.uid) || (e.uid === S.user.uid && !isOk(e));
+const decMark = () => ({ okBy: S.user.uid, okByName: myName().slice(0, 40), okAt: Date.now() });
+const fmtTs = t => new Date(t).toLocaleDateString('de-DE');
+function statusLine(e) {
+  const s = stOf(e);
+  if (s === 'offen') return ['⏳ wartet auf Genehmigung', 'warn'];
+  if (s === 'abgelehnt') return ['✗ abgelehnt von ' + (e.okByName || '?') + (e.okAt ? ' am ' + fmtTs(e.okAt) : '') + (e.grund ? ': ' + e.grund : ''), 'warn'];
+  return [e.okByName ? '✓ genehmigt von ' + e.okByName + (e.okAt ? ' am ' + fmtTs(e.okAt) : '') : '✓ genehmigt', 'ok'];
+}
 const myName = () => (S.meDoc && S.meDoc.name) || (S.user && S.user.email) || '';
 
 function access() {
@@ -403,6 +431,9 @@ function render() {
   const a = access(), ok = a === 'ok';
   $('ver').textContent = 'Version ' + APP_VERSION;
   renderWho();
+  const nOk = ok && canEditAll() ? S.rows.filter(e => stOf(e) === 'offen' && canDecide(e)).length : 0;
+  const badge = (b, t) => { b.textContent = t; if (nOk) b.append(el('span', 'badge', nOk > 99 ? '99+' : String(nOk))); };
+  badge($('nadm'), 'Verwaltung'); badge($('tabOk'), 'Genehmigen');
   $('vLoad').hidden = a !== 'load'; $('vAuth').hidden = a !== 'auth'; $('vGate').hidden = !GATE[a];
   $('nav').hidden = !ok; $('nadm').hidden = !(ok && canEditAll());
   if (S.view === 'adm' && !(ok && canEditAll())) { S.view = 'new'; syncUsers(); }
@@ -427,11 +458,11 @@ function renderList() {
   const y = $('jahr').value, m = canAll() ? $('mf').value : '';
   const rows = S.rows.filter(e => (!y || e.datum.indexOf(y) === 0) && (!m || e.name === m))
     .sort((a, b) => b.datum.localeCompare(a.datum) || (b.t || 0) - (a.t || 0));
-  const tot = rows.reduce((s, e) => s + e.stunden, 0);
-  $('sum').textContent = (canAll() && !m ? 'Alle Mitglieder: ' : 'Summe: ') + nf(tot) + ' Std. · ' + rows.length + (rows.length === 1 ? ' Eintrag' : ' Einträge');
+  const tot = rows.filter(isOk).reduce((s, e) => s + e.stunden, 0), wait = rows.filter(e => stOf(e) === 'offen').reduce((s, e) => s + e.stunden, 0);
+  $('sum').textContent = (canAll() && !m ? 'Alle Mitglieder: ' : 'Summe: ') + nf(tot) + ' Std. genehmigt' + (wait ? ' (+' + nf(wait) + ' wartend)' : '') + ' · ' + rows.length + (rows.length === 1 ? ' Eintrag' : ' Einträge');
   const box = $('list'); box.replaceChildren();
   if (!rows.length) { box.append(el('p', 'mut', 'Noch keine Einträge.')); return; }
-  const sums = {}; rows.forEach(e => { const k = e.datum.slice(0, 7); sums[k] = (sums[k] || 0) + e.stunden; });
+  const sums = {}; rows.forEach(e => { const k = e.datum.slice(0, 7); sums[k] = (sums[k] || 0) + (isOk(e) ? e.stunden : 0); });
   let cur = '';
   rows.forEach(e => {
     const k = e.datum.slice(0, 7);
@@ -439,8 +470,11 @@ function renderList() {
     const c = el('div', 'item'), l = el('div', 'il');
     l.append(el('b', null, e.taetigkeit || '–'), el('small', 'mut', dfmt(e.datum) + (e.name ? ' · ' + e.name : '')));
     if (e.notiz) l.append(el('small', 'mut', e.notiz));
+    const sl = statusLine(e); l.append(el('small', 'st ' + sl[1], sl[0]));
+    if (!isOk(e)) c.style.opacity = stOf(e) === 'abgelehnt' ? '.75' : '1';
     const r = el('div', 'ir'); r.append(el('span', 'hrs', nf(e.stunden) + ' h'));
-    if (e.uid === S.user.uid || canEditAll()) {
+    if (stOf(e) !== 'ok' && canDecide(e)) { const bo = el('button', 'ic', '✓'); bo.setAttribute('aria-label', 'Genehmigen'); bo.onclick = () => approve(e); r.append(bo); }
+    if (canEdit(e)) {
       const b1 = el('button', 'ic', '✎'); b1.setAttribute('aria-label', 'Bearbeiten'); b1.onclick = () => editRow(e.id);
       const b2 = el('button', 'ic', '🗑'); b2.setAttribute('aria-label', 'Löschen'); b2.onclick = () => delRow(e.id);
       r.append(b1, b2);
@@ -456,16 +490,18 @@ function renderData() {
 /* ---------- Eintragen ---------- */
 function resetForm() {
   S.editId = null; $('datum').value = todayISO(); $('std').value = ''; $('tat').value = ''; $('notiz').value = '';
-  $('ft').textContent = 'Neuer Eintrag'; $('bs').textContent = 'Speichern'; $('bc').hidden = true;
+  $('ft').textContent = 'Neuer Eintrag'; $('bs').textContent = 'Senden'; $('bc').hidden = true;
 }
 function editRow(id) {
   const e = S.rows.find(x => x.id === id); if (!e) return;
+  if (!canEdit(e)) { toast('Genehmigte Einträge kann nur ein Admin ändern.'); return; }
   S.editId = id; $('datum').value = e.datum; $('std').value = String(e.stunden).replace('.', ','); $('tat').value = e.taetigkeit || ''; $('notiz').value = e.notiz || '';
   $('ft').textContent = e.uid === S.user.uid ? 'Eintrag bearbeiten' : 'Eintrag von ' + e.name + ' bearbeiten';
-  $('bs').textContent = 'Änderung speichern'; $('bc').hidden = false; setView('new');
+  $('bs').textContent = e.uid === S.user.uid && !S.isSuper ? 'Änderung senden' : 'Änderung speichern'; $('bc').hidden = false; setView('new');
 }
 async function delRow(id) {
   const x = S.rows.find(e => e.id === id); if (!x) return;
+  if (!canEdit(x)) { toast('Genehmigte Einträge kann nur ein Admin löschen.'); return; }
   const msg = x.uid !== S.user.uid ? 'Eintrag von ' + x.name + ' (' + nf(x.stunden) + ' h am ' + dfmt(x.datum) + ') wirklich löschen?' : 'Diesen Eintrag löschen?';
   if (await ask(msg, ['Löschen', 'Abbrechen']) !== 0) return;
   fire(F.deleteDoc(F.doc(db, 'stunden', id)), 'Eintrag löschen'); toast('Eintrag gelöscht.');
@@ -476,10 +512,24 @@ $('bs').onclick = () => {
   if (!d) { toast('Bitte ein Datum wählen.'); return; }
   if (!(h > 0) || h > 24) { toast('Bitte gültige Stunden (0–24) eingeben.'); return; }
   const o = { datum: d, taetigkeit: $('tat').value.trim().slice(0, 200), stunden: Math.round(h * 100) / 100, notiz: $('notiz').value.trim().slice(0, 500) };
-  if (S.editId) fire(F.updateDoc(F.doc(db, 'stunden', S.editId), o), 'Eintrag ändern');
-  else fire(F.addDoc(F.collection(db, 'stunden'), Object.assign({ uid: S.user.uid, name: myName().slice(0, 40), t: Date.now() }, o)), 'Eintrag speichern');
-  const was = S.editId; resetForm();
-  toast(navigator.onLine ? (was ? 'Änderung gespeichert.' : 'Eintrag gespeichert.') : 'Gespeichert – wird gesendet, sobald du online bist.');
+  let msg;
+  if (S.editId) {
+    const e = S.rows.find(x => x.id === S.editId) || {};
+    let upd = o;
+    if (e.uid === S.user.uid && !S.isSuper) {
+      // eigener Eintrag: geht erneut zur Genehmigung, alter Vermerk wird entfernt
+      const del = F.deleteField();
+      upd = Object.assign({}, o, { status: 'offen', okBy: del, okByName: del, okAt: del, grund: del });
+      msg = 'Änderung gesendet – wartet auf Genehmigung.';
+    } else if (stOf(e) !== 'offen') { upd = Object.assign({}, o, decMark()); msg = 'Änderung gespeichert (von dir bestätigt).'; }
+    else msg = 'Änderung gespeichert.';
+    fire(F.updateDoc(F.doc(db, 'stunden', S.editId), upd), 'Eintrag ändern');
+  } else {
+    fire(F.addDoc(F.collection(db, 'stunden'), Object.assign({ uid: S.user.uid, name: myName().slice(0, 40), t: Date.now(), status: 'offen' }, o)), 'Eintrag senden');
+    msg = 'Eintrag gesendet – wartet auf Genehmigung.';
+  }
+  resetForm();
+  toast(navigator.onLine ? msg : 'Gespeichert – wird gesendet, sobald du online bist.');
 };
 
 /* ---------- Anmeldung ---------- */
@@ -567,15 +617,20 @@ $('bx').onclick = () => {
   const rows = S.rows.filter(e => !y || e.datum.indexOf(y) === 0).sort((a, b) => a.datum.localeCompare(b.datum) || (a.name || '').localeCompare(b.name || '', 'de'));
   if (!rows.length) { toast('Keine Einträge zum Exportieren.'); return; }
   if (!window.XLSX) { toast('Excel-Bibliothek konnte nicht geladen werden.'); return; }
-  const aoa = [['Datum', 'Name', 'Tätigkeit', 'Stunden', 'Notiz']], per = {}; let tot = 0;
-  rows.forEach(e => { const p = e.datum.split('-'); aoa.push([new Date(+p[0], +p[1] - 1, +p[2], 12), e.name, e.taetigkeit, e.stunden, e.notiz]); tot += e.stunden; const n = e.name || '(ohne Name)'; per[n] = (per[n] || 0) + e.stunden; });
-  const n = rows.length; aoa.push(['', '', 'Summe', tot, '']);
+  const ST = { ok: 'genehmigt', offen: 'wartend', abgelehnt: 'abgelehnt' };
+  const aoa = [['Datum', 'Name', 'Tätigkeit', 'Stunden', 'Status', 'Entschieden von', 'Entschieden am', 'Notiz', 'Ablehnungsgrund']], per = {}; let tot = 0;
+  rows.forEach(e => {
+    const p = e.datum.split('-'), s = stOf(e);
+    aoa.push([new Date(+p[0], +p[1] - 1, +p[2], 12), e.name, e.taetigkeit, e.stunden, ST[s], e.okByName || '', e.okAt ? fmtTs(e.okAt) : '', e.notiz, e.grund || '']);
+    const n = e.name || '(ohne Name)', q = per[n] || (per[n] = { ok: 0, offen: 0, abgelehnt: 0 }); q[s] += e.stunden; if (s === 'ok') tot += e.stunden;
+  });
+  const n = rows.length; aoa.push(['', '', 'Summe genehmigt', tot, '', '', '', '', '']);
   const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
   for (let i = 0; i < n; i++) { const c = ws['A' + (i + 2)]; if (c) c.z = 'DD.MM.YYYY'; }
-  ws['D' + (n + 2)] = { t: 'n', v: tot, f: 'SUM(D2:D' + (n + 1) + ')' };
-  ws['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 28 }, { wch: 10 }, { wch: 32 }];
-  const a2 = [['Name', 'Stunden']]; Object.keys(per).sort((a, b) => a.localeCompare(b, 'de')).forEach(k => a2.push([k, per[k]])); a2.push(['Gesamt', tot]);
-  const ws2 = XLSX.utils.aoa_to_sheet(a2); ws2['!cols'] = [{ wch: 26 }, { wch: 10 }];
+  ws['D' + (n + 2)] = { t: 'n', v: tot, f: 'SUMIF(E2:E' + (n + 1) + ',"genehmigt",D2:D' + (n + 1) + ')' };
+  ws['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 28 }, { wch: 9 }, { wch: 11 }, { wch: 22 }, { wch: 14 }, { wch: 30 }, { wch: 30 }];
+  const a2 = [['Name', 'Genehmigt', 'Wartend', 'Abgelehnt']]; Object.keys(per).sort((a, b) => a.localeCompare(b, 'de')).forEach(k => a2.push([k, per[k].ok, per[k].offen, per[k].abgelehnt])); a2.push(['Gesamt', tot, '', '']);
+  const ws2 = XLSX.utils.aoa_to_sheet(a2); ws2['!cols'] = [{ wch: 26 }, { wch: 11 }, { wch: 10 }, { wch: 10 }];
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Arbeitsstunden'); XLSX.utils.book_append_sheet(wb, ws2, 'Summe je Person');
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   if (download('stundentracker' + (y ? '-' + y : '') + '.xlsx', buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) toast('Excel-Datei exportiert.');
@@ -604,16 +659,16 @@ $('imp').onchange = async ev => {
     if (await ask(ok.length + ' neue Einträge importieren?', ['Importieren', 'Abbrechen']) !== 0) return;
     for (let i = 0; i < ok.length; i += 400) {
       const b = F.writeBatch(db);
-      ok.slice(i, i + 400).forEach(r => b.set(F.doc(F.collection(db, 'stunden')), Object.assign({ uid: S.user.uid, name: myName().slice(0, 40), t: Date.now() }, r)));
+      ok.slice(i, i + 400).forEach(r => b.set(F.doc(F.collection(db, 'stunden')), Object.assign({ uid: S.user.uid, name: myName().slice(0, 40), t: Date.now(), status: 'offen' }, r)));
       fire(b.commit(), 'Import');
     }
-    toast(ok.length + ' Einträge importiert.');
+    toast(ok.length + ' Einträge importiert – sie warten auf Genehmigung.');
   } catch (e) { toast('Datei konnte nicht gelesen werden.'); }
 };
 $('ba').onclick = async () => {
-  const mine = S.rows.filter(e => e.uid === S.user.uid);
-  if (!mine.length) { toast('Du hast keine Einträge.'); return; }
-  if (await ask('Wirklich alle deine ' + mine.length + ' Einträge löschen? Das lässt sich nicht rückgängig machen.', ['Alles löschen', 'Abbrechen']) !== 0) return;
+  const mine = S.rows.filter(e => e.uid === S.user.uid && canEdit(e)), locked = S.rows.filter(e => e.uid === S.user.uid).length - mine.length;
+  if (!mine.length) { toast(locked ? 'Genehmigte Einträge kann nur ein Admin löschen.' : 'Du hast keine Einträge.'); return; }
+  if (await ask('Wirklich ' + mine.length + ' deiner Einträge löschen?' + (locked ? ' ' + locked + ' genehmigte Einträge bleiben erhalten.' : '') + ' Das lässt sich nicht rückgängig machen.', ['Löschen', 'Abbrechen']) !== 0) return;
   for (let i = 0; i < mine.length; i += 400) { const b = F.writeBatch(db); mine.slice(i, i + 400).forEach(e => b.delete(F.doc(db, 'stunden', e.id))); fire(b.commit(), 'Einträge löschen'); }
   toast('Deine Einträge wurden gelöscht.');
 };
@@ -621,12 +676,12 @@ $('ba').onclick = async () => {
 /* ---------- Verwaltung (Super-Admin) ---------- */
 function renderAdm() {
   document.querySelectorAll('#admTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === admTab));
-  $('admPf').hidden = admTab !== 'pf'; $('admMg').hidden = admTab !== 'mg'; $('admCfg').hidden = admTab !== 'cfg';
-  if (admTab === 'pf') renderPf(); else if (admTab === 'mg') renderMembers(); else { fillCfgForm(); renderDel(); }
+  $('admOk').hidden = admTab !== 'ok'; $('admPf').hidden = admTab !== 'pf'; $('admMg').hidden = admTab !== 'mg'; $('admCfg').hidden = admTab !== 'cfg';
+  if (admTab === 'ok') renderOk(); else if (admTab === 'pf') renderPf(); else if (admTab === 'mg') renderMembers(); else { fillCfgForm(); renderDel(); }
 }
 function renderMembers() {
   const f = $('uf').value, box = $('ml'); box.replaceChildren();
-  const stat = {}; S.rows.forEach(e => { const s = stat[e.uid] || (stat[e.uid] = { n: 0, h: 0 }); s.n++; s.h += e.stunden; });
+  const stat = {}; S.rows.filter(isOk).forEach(e => { const s = stat[e.uid] || (stat[e.uid] = { n: 0, h: 0 }); s.n++; s.h += e.stunden; });
   const list = S.users.filter(u => !u.deleted).filter(u => f === 'nostd' ? u.std !== true : f === 'std' ? u.std === true : true)
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'de'));
   if (!list.length) { box.append(el('p', 'mut', 'Keine Konten in dieser Auswahl.')); return; }
@@ -688,7 +743,8 @@ const round2 = n => Math.round(n * 100) / 100;
 const eur = n => (n || 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 const curYear = () => String(new Date().getFullYear());
 const sollFor = (uid, y) => { const d = S.soll.find(x => x.id === uid + '_' + y); return d ? +d.soll : +cfg().soll; };
-const istFor = (uid, y) => round2(S.rows.filter(e => e.uid === uid && e.datum.slice(0, 4) === String(y)).reduce((s, e) => s + e.stunden, 0));
+const istFor = (uid, y) => round2(S.rows.filter(e => e.uid === uid && isOk(e) && e.datum.slice(0, 4) === String(y)).reduce((s, e) => s + e.stunden, 0));
+const waitFor = (uid, y) => round2(S.rows.filter(e => e.uid === uid && stOf(e) === 'offen' && e.datum.slice(0, 4) === String(y)).reduce((s, e) => s + e.stunden, 0));
 const addDays = (iso, n) => { const [a, b, c] = iso.split('-').map(Number); const d = new Date(a, b - 1, c + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const roleLabel = () => S.isSuper ? 'Super-Admin' : isStdAdm() ? 'Stunden-Admin' : isBoard() ? 'Vorstand' : 'Mitglied';
 const seenSent = new Set();
@@ -709,7 +765,10 @@ function renderMyStd() {
   const soll = sollFor(uid, y), ist = istFor(uid, y), diff = round2(ist - soll);
   const card = el('div', 'card');
   card.append(el('h2', null, 'Pflichtstunden ' + y));
-  card.append(el('div', null, nf(ist) + ' von ' + nf(soll) + ' Stunden geleistet'));
+  card.append(el('div', null, nf(ist) + ' von ' + nf(soll) + ' Stunden geleistet (genehmigt)'));
+  const wt = waitFor(uid, y), rej = S.rows.filter(e => e.uid === uid && stOf(e) === 'abgelehnt' && e.datum.slice(0, 4) === y).length;
+  if (wt) card.append(el('small', 'mut', '⏳ ' + nf(wt) + ' h warten noch auf Genehmigung'));
+  if (rej) card.append(el('small', 'warnTxt', (wt ? ' · ' : '') + '✗ ' + rej + (rej === 1 ? ' Eintrag wurde' : ' Einträge wurden') + ' abgelehnt – siehe Liste'));
   const bar = el('div', 'bar'), fill = el('i');
   fill.style.width = (soll > 0 ? Math.min(100, ist / soll * 100) : 100) + '%';
   if (diff >= 0) fill.className = 'ok';
@@ -744,8 +803,59 @@ function renderMyStd() {
   });
 }
 
+/* --- Genehmigen --- */
+function approve(e) {
+  if (!canDecide(e)) { toast('Eigene Einträge genehmigt ein anderer Admin.'); return; }
+  fire(F.updateDoc(F.doc(db, 'stunden', e.id), Object.assign({ status: 'ok', grund: F.deleteField() }, decMark())), 'Genehmigen');
+  toast('Genehmigt: ' + nf(e.stunden) + ' h von ' + e.name + '.');
+}
+async function reject(e) {
+  if (!canDecide(e)) { toast('Eigene Einträge prüft ein anderer Admin.'); return; }
+  const g = await askIn('Eintrag von ' + e.name + ' (' + nf(e.stunden) + ' h am ' + dfmt(e.datum) + ') ablehnen.\nGrund (optional, sieht das Mitglied):', 'Grund', e.grund || '');
+  if (g === null) return;
+  fire(F.updateDoc(F.doc(db, 'stunden', e.id), Object.assign({ status: 'abgelehnt', grund: g.slice(0, 300) }, decMark())), 'Ablehnen');
+  toast('Abgelehnt.');
+}
+function renderOk() {
+  const f = $('okF').value || 'offen', box = $('okList'); box.replaceChildren();
+  const all = S.rows.filter(e => stOf(e) === 'offen'), mineOnly = all.filter(e => !canDecide(e)).length;
+  $('okSum').textContent = all.length ? all.length + (all.length === 1 ? ' Eintrag wartet' : ' Einträge warten') + ' (' + nf(all.reduce((s, e) => s + e.stunden, 0)) + ' h)' + (mineOnly ? ' – davon ' + mineOnly + ' eigene, die ein anderer Admin genehmigt' : '') + '.' : 'Keine wartenden Einträge.';
+  $('okAll').hidden = f !== 'offen' || !all.some(canDecide);
+  let rows = S.rows.filter(e => stOf(e) === f);
+  rows = f === 'offen' ? rows.sort((a, b) => (a.t || 0) - (b.t || 0)) : rows.sort((a, b) => (b.okAt || 0) - (a.okAt || 0)).slice(0, 100);
+  if (!rows.length) { box.append(el('p', 'mut', f === 'offen' ? 'Alles erledigt. 👍' : 'Keine Einträge.')); return; }
+  rows.forEach(e => {
+    const c = el('div', 'card'), top = el('div', 'item'), l = el('div', 'il');
+    top.style.cssText = 'border:0;padding:0;margin:0;background:transparent';
+    l.append(el('b', null, (e.name || '?') + ' · ' + nf(e.stunden) + ' h'), el('small', 'mut', dfmt(e.datum) + ' · ' + (e.taetigkeit || '–')));
+    if (e.notiz) l.append(el('small', 'mut', e.notiz));
+    if (f !== 'offen' || e.okByName) { const sl = statusLine(e); l.append(el('small', 'st ' + sl[1], sl[0])); }
+    top.append(l); c.append(top);
+    if (canDecide(e)) {
+      const bx = el('div', 'ok-btns');
+      if (f !== 'ok') { const a = el('button', 'btn', '✓ Genehmigen'); a.onclick = () => approve(e); bx.append(a); }
+      if (f !== 'abgelehnt') { const r = el('button', 'btn sec dng', '✗ Ablehnen'); r.onclick = () => reject(e); bx.append(r); }
+      c.append(bx);
+    } else c.append(el('small', 'mut', 'Eigener Eintrag – genehmigt ein anderer Admin.'));
+    box.append(c);
+  });
+}
+$('okF').onchange = renderOk;
+$('okAll').onclick = async () => {
+  const list = S.rows.filter(e => stOf(e) === 'offen' && canDecide(e));
+  if (!list.length) return;
+  if (await ask(list.length + ' Einträge über zusammen ' + nf(list.reduce((s, e) => s + e.stunden, 0)) + ' h genehmigen?', ['Alle genehmigen', 'Abbrechen']) !== 0) return;
+  const mark = decMark();
+  for (let i = 0; i < list.length; i += 400) {
+    const b = F.writeBatch(db);
+    list.slice(i, i + 400).forEach(e => b.update(F.doc(db, 'stunden', e.id), Object.assign({ status: 'ok', grund: F.deleteField() }, mark)));
+    fire(b.commit(), 'Genehmigen');
+  }
+  toast(list.length + ' Einträge genehmigt.');
+};
+
 /* --- Verwaltung: Unterbereiche --- */
-let admTab = 'pf', cfgDirty = false;
+let admTab = 'ok', cfgDirty = false;
 $('admTabs').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; admTab = b.dataset.t; if (admTab === 'cfg') { cfgDirty = false; fillCfgForm(); } renderAdm(); };
 function pfYears() {
   const s = {}; s[curYear()] = 1;
@@ -757,7 +867,7 @@ function pfData(y) {
   return S.users.filter(u => !u.deleted && (u.std === true || S.inv.some(i => i.uid === u.id && String(i.year) === y)))
     .map(u => {
       const soll = sollFor(u.id, y), ist = istFor(u.id, y), fehl = round2(Math.max(0, soll - ist)), mehr = round2(Math.max(0, ist - soll));
-      return { u, soll, ist, fehl, mehr, betrag: round2(fehl * c.rate), inv: S.inv.find(i => i.id === u.id + '_' + y),
+      return { u, soll, ist, wait: waitFor(u.id, y), fehl, mehr, betrag: round2(fehl * c.rate), inv: S.inv.find(i => i.id === u.id + '_' + y),
         rems: S.rem.filter(r => r.uid === u.id && String(r.year) === y).sort((a, b) => b.t - a.t), indiv: S.soll.some(x => x.id === u.id + '_' + y) };
     })
     .sort((a, b) => String(a.u.name || '').localeCompare(String(b.u.name || ''), 'de'));
@@ -780,6 +890,7 @@ function renderPf() {
     l.append(el('b', null, d.u.name || '(ohne Name)'));
     l.append(el('small', null, nf(d.ist) + ' / ' + nf(d.soll) + ' h · ' + (d.soll <= 0 ? 'kein Soll' : d.fehl > 0 ? 'fehlen ' + nf(d.fehl) + ' h' + (c.rate > 0 && !d.inv ? ' (' + eur(d.betrag) + ')' : '') : d.mehr > 0 ? nf(d.mehr) + ' h mehr' : 'erfüllt')));
     if (d.fehl > 0) tag('offen', 'warn'); else if (d.soll > 0) tag('erfüllt', 'ok');
+    if (d.wait) tag(nf(d.wait) + ' h wartend');
     if (d.indiv) tag('Soll individuell');
     if (d.u.blocked) tag('gesperrt', 'warn');
     if (d.rems.length) tag('erinnert ' + d.rems.length + '× (zuletzt ' + new Date(d.rems[0].t).toLocaleDateString('de-DE') + ')');
