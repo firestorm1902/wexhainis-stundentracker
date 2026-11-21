@@ -1,6 +1,6 @@
 {
-  "name": "Wexhainer Stundentracker",
-  "short_name": "Stunden",
+  "name": "WexStunden",
+  "short_name": "WexStunden",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
