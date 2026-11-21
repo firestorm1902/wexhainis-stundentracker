@@ -55,7 +55,7 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
 .err{background:var(--wy2);border:1px solid var(--wy);border-radius:10px;padding:10px 12px;margin:12px 0;font-size:.9rem}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:30}
 .modal>div{background:var(--card);border-radius:16px;padding:18px;width:100%;max-width:380px;max-height:90vh;overflow:auto}
-.whoami{font-size:.85rem;background:var(--wy2);border:1px solid var(--wy);border-radius:20px;display:inline-block;padding:3px 12px;margin:2px 0 8px;max-width:100%;overflow-wrap:anywhere}
+.whoami{font:inherit;font-size:.85rem;color:var(--ink);cursor:pointer;text-align:left;background:var(--wy2);border:1px solid var(--wy);border-radius:20px;display:inline-block;padding:3px 12px;margin:2px 0 8px;max-width:100%;overflow-wrap:anywhere}
 .bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin:8px 0 4px}.bar i{display:block;height:100%;background:var(--wy)}.bar i.ok{background:var(--pet)}
 .okTxt{color:var(--pet)}.warnTxt{color:var(--pen)}
 .msg.new{border-color:var(--wy);box-shadow:inset 0 0 0 1px var(--wy)}.msg p{margin:6px 0}.pre{white-space:pre-line}
@@ -78,7 +78,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 <main>
   <h1>🐝 Wexhainer Stunden Tracker 🕒</h1>
   <div class="ver" id="ver"></div>
-  <div class="whoami" id="whoami" hidden></div>
+  <button type="button" class="whoami" id="whoami" hidden aria-label="Konto: Abmelden"></button>
   <div class="mut" id="sum" hidden></div>
   <div class="err" id="err" hidden></div>
 
@@ -244,7 +244,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.3.5';
+const APP_VERSION = '1.3.6';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -535,6 +535,11 @@ $('aForgot').onclick = async () => {
 };
 async function logout() { hidePw(); S.view = 'new'; await F.signOut(auth); }
 $('lo').onclick = logout; $('gOut').onclick = logout;
+$('whoami').onclick = async () => {
+  if (!S.user) return;
+  const who = access() === 'ok' ? myName() + ' (' + roleLabel() + ')' : (S.user.email || '');
+  if (await ask('Angemeldet als ' + who + (S.user.email && access() === 'ok' ? '\n' + S.user.email : '') + '\n\nDu wirst meist auch in der Getränke-Strichliste abgemeldet.', ['Abmelden', 'Abbrechen']) === 0) logout();
+};
 $('gCreate').onclick = async () => {
   const name = $('gName').value.trim().replace(/\s+/g, ' ');
   if (name.length < 3 || !/\s/.test(name)) { toast('Bitte Vor- und Nachnamen eingeben'); return; }
@@ -693,7 +698,7 @@ function renderWho() {
   const w = $('whoami');
   w.hidden = !S.user;
   if (!S.user) return;
-  w.textContent = '👤 ' + (access() === 'ok' ? myName() + ' · ' + roleLabel() : (S.user.email || ''));
+  w.textContent = '👤 ' + (access() === 'ok' ? myName() + ' · ' + roleLabel() : (S.user.email || '')) + '  ▾';
 }
 
 function renderMyStd() {
