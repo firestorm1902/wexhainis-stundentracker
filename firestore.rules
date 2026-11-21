@@ -231,7 +231,7 @@ service cloud.firestore {
     // Easter-Egg-Regeln, Gruppen, Sichtbarkeit, Kontakt, Bestenliste: alle lesen, nur Super-Admins ändern
     // Gruppen, Kontakt und Datenschutz sind schon vor der Anmeldung lesbar (Registrierung)
     match /config/{id} {
-      allow read: if signedIn() || id in ['groups', 'contact', 'privacy', 'theme'];
+      allow read: if signedIn() || id in ['groups', 'contact', 'privacy', 'theme', 'texts'];
       // Partymodus dürfen auch Getränke-Admins starten und beenden – aber nur, wenn der Super-Admin ihn erlaubt hat
       // Datum des letzten Backups dürfen alle Admins setzen
       allow write: if isSuper() || (id == 'backup' && isAdmin()) || (id == 'party' && isAdmin()
@@ -266,6 +266,16 @@ service cloud.firestore {
         && request.resource.data.answer is string && request.resource.data.answer.size() >= 1 && request.resource.data.answer.size() <= 600
         && request.resource.data.status == 'answered');
       allow delete: if isAdmin();
+    }
+    // Lager: Bewegungen (Eingang, Entnahme, Inventur, Tag) – Admins schreiben, Admins und Vorstand lesen
+    match /stockmv/{id} {
+      allow read: if isReader();
+      allow create: if isAdmin() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if isSuper();
+    }
+    // Persönliche Einstellungen (z. B. Reihenfolge der Admin-Bereiche): nur man selbst
+    match /prefs/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
     }
     // Tageszusammenfassungen für die tägliche Zählerprüfung: nur der Super-Admin
     match /dsum/{id} { allow read, write: if isSuper(); }
