@@ -244,7 +244,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.3.6';
+const APP_VERSION = '1.3.7';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -276,6 +276,7 @@ function access() {
   if (!d) return S.registering ? 'load' : 'noprofile';
   if (d.deleted) return 'removed';
   if (d.blocked) return 'blocked';
+  if (d.stdBlock) return 'stdblocked';
   if (d.pending) return 'pending';
   if (d.std !== true) return 'nostd';
   return 'ok';
@@ -284,6 +285,7 @@ const GATE = {
   noprofile: ['Profil fehlt', 'Für dieses Konto gibt es noch kein Profil. Lege es mit deinem Namen an.'],
   removed: ['Konto entfernt', 'Dieses Konto wurde entfernt. Bitte melde dich beim Vorstand.'],
   blocked: ['Konto gesperrt', 'Dein Konto ist gesperrt. Bitte melde dich beim Vorstand.'],
+  stdblocked: ['Gesperrt', 'Dein Konto ist für den Stundentracker gesperrt. Bitte melde dich beim Vorstand.'],
   pending: ['Warten auf Freischaltung', 'Dein Konto ist angelegt und wartet auf die Freischaltung. Bitte melde dich beim Vorstand.'],
   nostd: ['Noch nicht freigegeben', 'Dein Konto ist für den Stundentracker noch nicht freigegeben. Bitte melde dich beim Super-Admin.']
 };
@@ -634,7 +636,7 @@ function renderMembers() {
     const tags = el('div');
     const tag = (t, cls) => tags.append(el('span', 'tag ' + (cls || ''), t));
     if (u.pending) tag('wartet auf Freischaltung', 'warn');
-    if (u.blocked) tag('gesperrt', 'warn');
+    if (u.blocked) tag('gesperrt', 'warn'); else if (u.stdBlock) tag('Stunden gesperrt', 'warn');
     if (u.id === S.user.uid && S.isSuper) tag('Super-Admin (voller Zugriff)', 'ok');
     tag(u.std === true ? 'Stundentracker: freigegeben' : 'Stundentracker: nicht freigegeben', u.std === true ? 'ok' : '');
     if (u.sr === 'admin') tag('Stunden-Admin', 'ok');

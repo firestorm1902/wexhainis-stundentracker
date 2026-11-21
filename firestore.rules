@@ -14,6 +14,9 @@ rules_version = '2';
 //   std = true        – für den Stundentracker freigegeben (eigene Stunden erfassen, ändern, löschen)
 //   sr  = 'vorstand'  – darf im Stundentracker die Stunden aller Mitglieder lesen (Excel-Auswertung)
 //   sr  = 'admin'     – Stunden-Admin: alle Stunden lesen, ändern, löschen; Freigabe und Vorstand vergeben (nur der Super-Admin ernennt)
+//   stdBlock = true   – nur für den Stundentracker gesperrt (Strichliste bleibt nutzbar)
+// Strichliste: slBlock = true – nur für die Strichliste gesperrt (Stundentracker bleibt nutzbar).
+//   blocked = true sperrt dagegen beide Apps. slBlock und stdBlock setzt nur der Super-Admin (WexSuperAdmin).
 //   Getrennt von der Strichliste: role (Getränke-Admin) gibt hier keine Rechte, sr gibt dort keine.
 //   Der Super-Admin sieht, ändert und löscht alle Stunden und verwaltet die Konten.
 service cloud.firestore {
@@ -46,13 +49,15 @@ service cloud.firestore {
     function productIsAlc(pid) {
       return get(/databases/$(database)/documents/products/$(pid)).data.get('cat', 'sonst') in alcCats();
     }
-    function isAdmin() { return isSuper() || (isActive() && profile().get('role', '') == 'admin'); }
-    function isBoard() { return isActive() && profile().get('role', '') == 'vorstand'; }
+    // Nur für die Strichliste gesperrt (slBlock, setzt nur der Super-Admin) – der Stundentracker bleibt nutzbar
+    function slActive() { return isActive() && profile().get('slBlock', false) != true; }
+    function isAdmin() { return isSuper() || (slActive() && profile().get('role', '') == 'admin'); }
+    function isBoard() { return slActive() && profile().get('role', '') == 'vorstand'; }
     // darf alles lesen, was für Abgleich und Auswertung nötig ist
     function isReader() { return isAdmin() || isBoard(); }
 
     // ---- Stundentracker ----
-    function stdActive()  { return isActive() && profile().get('std', false) == true; }
+    function stdActive()  { return isActive() && profile().get('std', false) == true && profile().get('stdBlock', false) != true; }
     function isStdBoard() { return stdActive() && profile().get('sr', '') == 'vorstand'; }
     function isStdAdmin() { return stdActive() && profile().get('sr', '') == 'admin'; }
     function isStdStaff() { return isSuper() || isStdAdmin(); }
@@ -78,6 +83,12 @@ service cloud.firestore {
     function countersOk(a, b) {
       return step1(a, b, 'all') && step1(a, b, 'beer') && step1(a, b, 'c_radler') && step1(a, b, 'c_alkfrei') && step1(a, b, 'c_wein')
         && step1(a, b, 'c_wasser') && step1(a, b, 'c_soft') && step1(a, b, 'c_schnaps') && step1(a, b, 'c_sonst');
+    }
+    function undoCfgDoc() { return /databases/$(database)/documents/config/undo; }
+    function undoOk(d) {
+      let c = exists(undoCfgDoc()) ? get(undoCfgDoc()).data : {};
+      return c.get('on', true) == true
+        && (!('at' in d) || !(d.at is timestamp) || request.time < d.at + duration.value(c.get('secs', 10) + 120, 's'));
     }
     function boardEntryOk(a, b) { return step1(a, b, 'all') && step1(a, b, 'beer') && step1(a, b, 'na'); }
     // Bestenliste: nur der eigene Eintrag und die eigene Gruppe, jeweils ±1
@@ -155,14 +166,14 @@ service cloud.firestore {
     // Easter Eggs: Zähler für die Gruppe (pro Tag und gesamt) – alle Mitglieder zählen mit
     match /gstats/{id} {
       allow read: if signedIn();
-      allow write: if isAdmin() || (isActive()
+      allow write: if isAdmin() || (slActive()
         && request.resource.data.keys().hasOnly(counterKeys())
         && countersOk(oldData(), request.resource.data));
     }
     // Easter Eggs: eigene Gesamtzahl
     match /ustats/{uid} {
       allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow write: if isAdmin() || (isActive() && request.auth.uid == uid
+      allow write: if isAdmin() || (slActive() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(counterKeys())
         && countersOk(oldData(), request.resource.data));
     }
@@ -170,7 +181,7 @@ service cloud.firestore {
     match /live/{id} {
       allow read: if signedIn();
       allow delete: if isAdmin();
-      allow create, update: if isActive()
+      allow create, update: if slActive()
         && request.resource.data.keys().hasOnly(['id', 'day', 'title', 'sub', 'uid', 'name', 't', 'alc', 'rid'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.title is string && request.resource.data.title.size() <= 80
@@ -180,7 +191,7 @@ service cloud.firestore {
     // Easter Eggs: eigener Verlauf pro Tag (Dokument-ID = Nutzer-ID + "_" + Tag)
     match /ueggs/{id} {
       allow read: if isAdmin() || (signedIn() && id.matches(request.auth.uid + '_.+'));
-      allow write: if isAdmin() || (isActive() && id.matches(request.auth.uid + '_.+')
+      allow write: if isAdmin() || (slActive() && id.matches(request.auth.uid + '_.+')
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'day', 'items'])
         && request.resource.data.items is list && request.resource.data.items.size() <= 200);
@@ -189,7 +200,7 @@ service cloud.firestore {
     // Profilbilder: kleines JPEG als Text, alle dürfen sehen, nur man selbst ändern; Admins dürfen entfernen
     match /avatars/{uid} {
       allow read: if signedIn();
-      allow create, update: if isSuper() || (isActive() && request.auth.uid == uid
+      allow create, update: if isSuper() || (slActive() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['img', 't'])
         && request.resource.data.img is string
         && request.resource.data.img.size() < 60000
@@ -200,18 +211,18 @@ service cloud.firestore {
     // Bestenliste (Personen und Gruppen, pro Tag und gesamt)
     match /gboard/{id} {
       allow read: if signedIn();
-      allow write: if isAdmin() || (isActive() && request.resource.data.keys().hasOnly(['g', 'p'])
+      allow write: if isAdmin() || (slActive() && request.resource.data.keys().hasOnly(['g', 'p'])
         && boardOk(oldData(), request.resource.data));
     }
     // Sammelalbum: welche Easter Eggs man hatte
     match /album/{uid} {
       allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow write: if isAdmin() || (isActive() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['r']));
+      allow write: if isAdmin() || (slActive() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['r']));
     }
     // Fahrer-Modus pro Tag (Dokument-ID = Nutzer-ID + "_" + Tag)
     match /drv/{id} {
       allow read: if isReader() || (signedIn() && id.matches(request.auth.uid + '_.+'));
-      allow create, update: if isSuper() || (isActive() && id.matches(request.auth.uid + '_.+')
+      allow create, update: if isSuper() || (slActive() && id.matches(request.auth.uid + '_.+')
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'day', 't', 'name']));
       allow delete: if isAdmin() || (signedIn() && id.matches(request.auth.uid + '_.+'));
@@ -230,9 +241,31 @@ service cloud.firestore {
     // Gebucht pro Getränk am Tag (für die Buchungsgrenze): Mitglieder zählen ihr Getränk um genau 1 hoch oder runter
     match /dused/{id} {
       allow read: if signedIn();
-      allow write: if isAdmin() || (isActive() && request.resource.data.get('last', null) is string
+      allow write: if isAdmin() || (slActive() && request.resource.data.get('last', null) is string
         && request.resource.data.diff(oldData()).affectedKeys().hasOnly([request.resource.data.last, 'last'])
         && step1(oldData(), request.resource.data, request.resource.data.last));
+    }
+    // Rückgängig-Protokoll: wer wann was zurückgenommen hat (Admins und Vorstand lesen, nur der Super-Admin löscht)
+    match /undos/{id} {
+      allow read: if isReader();
+      allow create: if slActive() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'day', 'p', 't', 'bt'])
+        && request.resource.data.day is string && request.resource.data.p is string;
+      allow create, update: if isSuper();
+      allow delete: if isSuper();
+    }
+    // Rückfragen der Admins an Mitglieder (bei fehlenden Getränken): Admins schreiben, das Mitglied liest und antwortet
+    match /asks/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isAdmin() && request.resource.data.by == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'day', 'ps', 'text', 'by', 'byName', 't', 'status', 'answer', 'answerAt'])
+        && request.resource.data.text is string && request.resource.data.text.size() <= 800
+        && request.resource.data.status == 'open';
+      allow update: if isAdmin() || (slActive() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answer', 'answerAt', 'status'])
+        && request.resource.data.answer is string && request.resource.data.answer.size() >= 1 && request.resource.data.answer.size() <= 600
+        && request.resource.data.status == 'answered');
+      allow delete: if isAdmin();
     }
     // Tageszusammenfassungen für die tägliche Zählerprüfung: nur der Super-Admin
     match /dsum/{id} { allow read, write: if isSuper(); }
@@ -268,7 +301,7 @@ service cloud.firestore {
     // Korrektur- und Nachbuchungsanträge: Mitglieder stellen, Admins entscheiden
     match /reqs/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if isSuper() || (isActive()
+      allow create: if isSuper() || (slActive()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'name', 'day', 'p', 'n', 'type', 'note', 't', 'status'])
         && request.resource.data.status == 'open'
@@ -337,7 +370,7 @@ service cloud.firestore {
 
       // Mitglieder buchen für sich selbst; Admins dürfen auch nachtragen
       allow create: if isAdmin() || (
-        isActive()
+        slActive()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'day', 'p', 'src', 't', 'at', 'who'])
         && request.resource.data.day is string
@@ -349,8 +382,9 @@ service cloud.firestore {
         && (profile().get('minor', false) != true || !productIsAlc(request.resource.data.p))
       );
 
-      // Eigene Buchung zurücknehmen; Admins dürfen alles
-      allow delete: if isAdmin() || (isActive() && resource.data.uid == request.auth.uid);
+      // Eigene Buchung zurücknehmen – nur wenn der Super-Admin „Rückgängig“ erlaubt und nur kurz nach dem Buchen
+      // (eingestellte Sekunden + 2 Minuten Spielraum für langsames Netz); Admins dürfen alles
+      allow delete: if isAdmin() || (slActive() && resource.data.uid == request.auth.uid && undoOk(resource.data));
       allow update: if isAdmin();
     }
   }
