@@ -153,7 +153,7 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
   <section id="vAdm" hidden>
     <div class="card">
       <h2>Mitglieder und Rechte</h2>
-      <small class="mut">Die Konten sind dieselben wie in der Getränke-Strichliste. Der Stundentracker braucht zusätzlich eine eigene Freigabe. „Sperren“ und „Freigeben“ eines neuen Kontos gelten in beiden Apps.</small>
+      <small class="mut">Die Konten sind dieselben wie in der Getränke-Strichliste, die Rollen sind getrennt: Getränke-Admins haben hier keine Rechte, Stunden-Admins keine in der Strichliste. Der Stundentracker braucht eine eigene Freigabe.</small>
       <label for="uf">Anzeigen</label>
       <select id="uf"><option value="">Alle</option><option value="wait">Wartende Konten</option><option value="nostd">Ohne Freigabe für den Stundentracker</option><option value="std">Mit Freigabe</option></select>
     </div>
@@ -183,7 +183,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -201,7 +201,9 @@ const unsub = { me: null, rows: null, users: null };
 const stopL = k => { if (unsub[k]) { unsub[k](); unsub[k] = null; } };
 
 const isBoard = () => !S.isSuper && !!S.meDoc && S.meDoc.sr === 'vorstand';
-const canAll = () => S.isSuper || isBoard();
+const isStdAdm = () => !S.isSuper && !!S.meDoc && S.meDoc.sr === 'admin';
+const canAll = () => S.isSuper || isBoard() || isStdAdm();   // alle Stunden lesen
+const canEditAll = () => S.isSuper || isStdAdm();            // alle Stunden ändern/löschen, Verwaltung
 const myName = () => (S.meDoc && S.meDoc.name) || (S.user && S.user.email) || '';
 
 function access() {
@@ -303,7 +305,7 @@ function syncRows() {
   }, fail('Stunden'));
 }
 function syncUsers() {
-  if (!S.isSuper || S.view !== 'adm') { stopL('users'); return; }
+  if (access() !== 'ok' || !canEditAll() || S.view !== 'adm') { stopL('users'); return; }
   if (unsub.users) return;
   unsub.users = F.onSnapshot(F.collection(db, 'users'), snap => {
     S.users = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
@@ -324,8 +326,8 @@ function render() {
   const a = access(), ok = a === 'ok';
   $('ver').textContent = 'Version ' + APP_VERSION;
   $('vLoad').hidden = a !== 'load'; $('vAuth').hidden = a !== 'auth'; $('vGate').hidden = !GATE[a];
-  $('nav').hidden = !ok; $('nadm').hidden = !S.isSuper;
-  if (S.view === 'adm' && !S.isSuper) S.view = 'new';
+  $('nav').hidden = !ok; $('nadm').hidden = !(ok && canEditAll());
+  if (S.view === 'adm' && !(ok && canEditAll())) { S.view = 'new'; syncUsers(); }
   ['new', 'list', 'data', 'adm'].forEach(v => { $('v' + v[0].toUpperCase() + v.slice(1)).hidden = !(ok && S.view === v); });
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
   $('err').hidden = !S.dbError; $('err').textContent = S.dbError;
@@ -360,7 +362,7 @@ function renderList() {
     l.append(el('b', null, e.taetigkeit || '–'), el('small', 'mut', dfmt(e.datum) + (e.name ? ' · ' + e.name : '')));
     if (e.notiz) l.append(el('small', 'mut', e.notiz));
     const r = el('div', 'ir'); r.append(el('span', 'hrs', nf(e.stunden) + ' h'));
-    if (e.uid === S.user.uid || S.isSuper) {
+    if (e.uid === S.user.uid || canEditAll()) {
       const b1 = el('button', 'ic', '✎'); b1.setAttribute('aria-label', 'Bearbeiten'); b1.onclick = () => editRow(e.id);
       const b2 = el('button', 'ic', '🗑'); b2.setAttribute('aria-label', 'Löschen'); b2.onclick = () => delRow(e.id);
       r.append(b1, b2);
@@ -369,7 +371,7 @@ function renderList() {
   });
 }
 function renderData() {
-  $('who').textContent = 'Angemeldet als ' + myName() + (S.isSuper ? ' · Super-Admin' : isBoard() ? ' · Vorstand (sieht alle Einträge)' : '');
+  $('who').textContent = 'Angemeldet als ' + myName() + (S.isSuper ? ' · Super-Admin' : isStdAdm() ? ' · Stunden-Admin' : isBoard() ? ' · Vorstand (sieht alle Einträge)' : '');
   $('xh').textContent = canAll() ? 'Enthält die Einträge aller Mitglieder.' : 'Enthält deine eigenen Einträge.';
 }
 
@@ -549,6 +551,7 @@ function renderAdm() {
     if (u.blocked) tag('gesperrt', 'warn');
     if (u.id === S.user.uid && S.isSuper) tag('Super-Admin (voller Zugriff)', 'ok');
     tag(u.std === true ? 'Stundentracker: freigegeben' : 'Stundentracker: nicht freigegeben', u.std === true ? 'ok' : '');
+    if (u.sr === 'admin') tag('Stunden-Admin', 'ok');
     if (u.sr === 'vorstand') tag('Vorstand', 'ok');
     if (u.role) tag('Strichliste: ' + u.role);
     l.append(tags, el('small', 'mut', nf(s.h) + ' h · ' + s.n + (s.n === 1 ? ' Eintrag' : ' Einträge')));
@@ -558,17 +561,24 @@ function renderAdm() {
 }
 $('uf').onchange = renderAdm;
 async function memberMenu(u) {
-  const self = u.id === S.user.uid, o = [];
-  o.push(u.pending ? 'Freigeben (Konto und Stundentracker)' : u.std === true ? 'Stundentracker-Zugang entziehen' : 'Stundentracker freigeben');
-  if (!self) o.push(u.sr === 'vorstand' ? 'Vorstand entziehen' : 'Zum Vorstand machen');
-  o.push('Umbenennen');
-  if (!self) o.push(u.blocked ? 'Konto entsperren (beide Apps)' : 'Konto sperren (beide Apps)');
+  // Super-Admin: alles. Stunden-Admin: Freigabe und Vorstand für bereits freigeschaltete Konten, nicht für Admins und nicht für sich selbst.
+  const self = u.id === S.user.uid, sup = S.isSuper, adm = u.sr === 'admin', o = [];
+  if (sup || (!self && !adm && !u.pending)) o.push(u.pending ? 'Freigeben (Konto und Stundentracker)' : u.std === true ? 'Stundentracker-Zugang entziehen' : 'Stundentracker freigeben');
+  if (!self && !adm) o.push(u.sr === 'vorstand' ? 'Vorstand entziehen' : 'Zum Vorstand machen');
+  if (sup && !self) o.push(adm ? 'Stunden-Admin entziehen' : 'Zum Stunden-Admin machen');
+  if (sup) o.push('Umbenennen');
+  if (sup && !self) o.push(u.blocked ? 'Konto entsperren (beide Apps)' : 'Konto sperren (beide Apps)');
+  if (!o.length) { await ask((u.name || '') + ': Hier kannst du nichts ändern.' + (u.pending ? ' Das Konto wartet noch auf die Freischaltung durch den Super-Admin.' : adm ? ' Admins verwaltet nur der Super-Admin.' : ''), ['OK']); return; }
   o.push('Schließen');
   const a = o[await ask((u.name || '') + (u.email ? ' (' + u.email + ')' : ''), o)], ref = F.doc(db, 'users', u.id);
   if (a === 'Freigeben (Konto und Stundentracker)') {
     if (await ask('Konto von ' + u.name + ' freigeben? Die Freischaltung gilt auch für die Getränke-Strichliste.', ['Freigeben', 'Abbrechen']) === 0) { fire(F.updateDoc(ref, { pending: false, std: true }), 'Freigeben'); toast('Freigegeben.'); }
   } else if (a === 'Stundentracker freigeben') { fire(F.updateDoc(ref, { std: true }), 'Freigeben'); toast('Stundentracker freigegeben.'); }
   else if (a === 'Stundentracker-Zugang entziehen') { fire(F.updateDoc(ref, { std: false }), 'Zugang entziehen'); toast('Zugang entzogen.'); }
+  else if (a === 'Zum Stunden-Admin machen') {
+    if (await ask(u.name + ' zum Stunden-Admin machen? Er sieht, ändert und löscht dann alle Stunden und kann Mitglieder freigeben. In der Getränke-Strichliste ändert sich nichts.', ['Zum Admin machen', 'Abbrechen']) === 0) { fire(F.updateDoc(ref, { sr: 'admin', std: true }), 'Rolle'); toast('Jetzt Stunden-Admin.'); }
+  }
+  else if (a === 'Stunden-Admin entziehen') { fire(F.updateDoc(ref, { sr: '' }), 'Rolle'); toast('Admin-Rolle entzogen.'); }
   else if (a === 'Zum Vorstand machen') { fire(F.updateDoc(ref, { sr: 'vorstand' }), 'Rolle'); toast('Jetzt Vorstand (sieht alle Einträge).'); }
   else if (a === 'Vorstand entziehen') { fire(F.updateDoc(ref, { sr: '' }), 'Rolle'); toast('Vorstandsrolle entzogen.'); }
   else if (a === 'Umbenennen') {

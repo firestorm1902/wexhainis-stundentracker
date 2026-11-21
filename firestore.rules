@@ -13,6 +13,8 @@ rules_version = '2';
 // Stundentracker (zusätzliche Felder im Dokument users/{uid}, nur der Super-Admin setzt sie):
 //   std = true        – für den Stundentracker freigegeben (eigene Stunden erfassen, ändern, löschen)
 //   sr  = 'vorstand'  – darf im Stundentracker die Stunden aller Mitglieder lesen (Excel-Auswertung)
+//   sr  = 'admin'     – Stunden-Admin: alle Stunden lesen, ändern, löschen; Freigabe und Vorstand vergeben (nur der Super-Admin ernennt)
+//   Getrennt von der Strichliste: role (Getränke-Admin) gibt hier keine Rechte, sr gibt dort keine.
 //   Der Super-Admin sieht, ändert und löscht alle Stunden und verwaltet die Konten.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -52,6 +54,7 @@ service cloud.firestore {
     // ---- Stundentracker ----
     function stdActive()  { return isActive() && profile().get('std', false) == true; }
     function isStdBoard() { return stdActive() && profile().get('sr', '') == 'vorstand'; }
+    function isStdAdmin() { return stdActive() && profile().get('sr', '') == 'admin'; }
     function stundeOk(d) {
       return d.keys().hasOnly(['uid', 'name', 'datum', 'taetigkeit', 'stunden', 'notiz', 't'])
         && d.name is string && d.name.size() >= 1 && d.name.size() <= 40
@@ -105,7 +108,7 @@ service cloud.firestore {
 
     // Personen: Name einmal selbst festlegen, danach ändern nur Admins
     match /users/{uid} {
-      allow read: if isReader() || (signedIn() && request.auth.uid == uid);
+      allow read: if isReader() || isStdAdmin() || (signedIn() && request.auth.uid == uid);
 
       // neue Konten warten auf Freischaltung (pending = true)
       // Super-Admin: auch beim Wiederherstellen eines Backups
@@ -121,6 +124,14 @@ service cloud.firestore {
       allow update: if
         // Super-Admin: alles (Rolle, Sperre, Entfernen, Name)
         isSuper()
+        // Stunden-Admin: nur Stundentracker-Freigabe (std) und Vorstand (sr) bei freigeschalteten Konten,
+        // nicht bei sich selbst, nicht bei anderen Admins, keine neuen Admins
+        || (isStdAdmin() && request.auth.uid != uid
+            && resource.data.get('pending', false) != true
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['std', 'sr'])
+            && resource.data.get('sr', '') in ['', 'vorstand']
+            && request.resource.data.get('sr', '') in ['', 'vorstand']
+            && request.resource.data.get('std', false) is bool)
         // Admin: Name korrigieren, freischalten, Jugendschutz, Gruppe
         || (isAdmin()
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'pending', 'minor', 'grp'])
@@ -273,17 +284,21 @@ service cloud.firestore {
     }
 
     // Wexhainer Stundentracker: Arbeitsstunden
-    // Mitglieder sehen und ändern nur ihre eigenen Einträge, Vorstand liest alle, Super-Admin darf alles.
+    // Mitglieder sehen und ändern nur ihre eigenen Einträge, Vorstand liest alle, Stunden-Admin und Super-Admin dürfen alles.
     // Der Name im Eintrag muss dem Namen im Profil entsprechen (kein Fremdname möglich).
     match /stunden/{id} {
-      allow read: if isSuper() || isStdBoard() || (stdActive() && resource.data.uid == request.auth.uid);
+      allow read: if isSuper() || isStdAdmin() || isStdBoard() || (stdActive() && resource.data.uid == request.auth.uid);
       allow create: if isSuper() || (stdActive() && stundeOk(request.resource.data)
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.name == profile().get('name', ''));
-      allow update: if isSuper() || (stdActive() && stundeOk(request.resource.data)
+      allow update: if isSuper()
+        // Stunden-Admin: fremde Einträge ändern, Person und Name bleiben gleich
+        || (isStdAdmin() && stundeOk(request.resource.data)
+            && request.resource.data.uid == resource.data.uid && request.resource.data.name == resource.data.name)
+        || (stdActive() && stundeOk(request.resource.data)
         && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid
         && request.resource.data.name == profile().get('name', ''));
-      allow delete: if isSuper() || (stdActive() && resource.data.uid == request.auth.uid);
+      allow delete: if isSuper() || isStdAdmin() || (stdActive() && resource.data.uid == request.auth.uid);
     }
 
     // Buchungen
