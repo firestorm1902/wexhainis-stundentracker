@@ -58,6 +58,10 @@ input[type=checkbox]{width:auto;min-height:0;margin:3px 8px 0 0;flex:none}
 .okTxt{color:var(--pet)}.warnTxt{color:var(--pen)}
 .msg.new{border-color:var(--wy);box-shadow:inset 0 0 0 1px var(--wy)}.msg p{margin:6px 0}.pre{white-space:pre-line}
 textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;min-height:80px;resize:vertical}
+details.msg>summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:8px}
+details.msg>summary::-webkit-details-marker{display:none}
+details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[open]>summary::after{content:'▴'}
+.danger{border-color:var(--pen)}.danger h2{color:var(--pen)}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 </style>
 </head>
@@ -200,6 +204,18 @@ textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1p
         <button class="btn" id="cfgSave">Speichern</button>
         <small class="mut" style="display:block;margin-top:8px">Änderungen gelten für alle Jahre ohne individuelles Soll. Bereits erstellte Rechnungen bleiben unverändert.</small>
       </div>
+      <div class="card danger" id="delCard" hidden>
+        <h2>Daten löschen</h2>
+        <small class="mut">Nur für den Super-Admin. Vorher wird dein Passwort abgefragt und automatisch ein Backup (JSON) heruntergeladen. Konten und alle Daten der Getränke-Strichliste bleiben unberührt.</small>
+        <label for="delYear">Zeitraum</label><select id="delYear"></select>
+        <label class="chk"><input type="checkbox" id="delStd" checked><span>Arbeitsstunden</span></label>
+        <label class="chk"><input type="checkbox" id="delRem" checked><span>Erinnerungen</span></label>
+        <label class="chk"><input type="checkbox" id="delInv" checked><span>Rechnungen</span></label>
+        <label class="chk"><input type="checkbox" id="delSoll" checked><span>Individuelles Soll</span></label>
+        <label class="chk"><input type="checkbox" id="delCfg"><span>Einstellungen (nur bei „Alle Jahre“)</span></label>
+        <button class="btn sec" id="bakAll">Vollständiges Backup herunterladen</button>
+        <button class="btn sec dng" id="delBtn">Ausgewählte Daten löschen …</button>
+      </div>
     </div>
   </section>
 </main>
@@ -226,7 +242,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -295,13 +311,13 @@ function ask(msg, btns) {
     $('modal').hidden = false;
   });
 }
-function askIn(msg, ph, val) {
+function askIn(msg, ph, val, type) {
   return new Promise(res => {
-    $('mt').textContent = msg; $('mta').hidden = true; const i = $('mi'); i.hidden = false; i.value = val || ''; i.placeholder = ph || '';
+    $('mt').textContent = msg; $('mta').hidden = true; const i = $('mi'); i.hidden = false; i.type = type || 'text'; i.value = val || ''; i.placeholder = ph || '';
     const b = $('mb'); b.replaceChildren();
     const ok = el('button', 'btn', 'OK'), no = el('button', 'btn sec', 'Abbrechen');
-    ok.onclick = () => { $('modal').hidden = true; res(i.value.trim()); };
-    no.onclick = () => { $('modal').hidden = true; res(null); };
+    ok.onclick = () => { $('modal').hidden = true; const v = type === 'password' ? i.value : i.value.trim(); i.value = ''; i.type = 'text'; res(v); };
+    no.onclick = () => { $('modal').hidden = true; i.value = ''; i.type = 'text'; res(null); };
     b.append(ok, no); $('modal').hidden = false; setTimeout(() => i.focus(), 50);
   });
 }
@@ -597,7 +613,7 @@ $('ba').onclick = async () => {
 function renderAdm() {
   document.querySelectorAll('#admTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === admTab));
   $('admPf').hidden = admTab !== 'pf'; $('admMg').hidden = admTab !== 'mg'; $('admCfg').hidden = admTab !== 'cfg';
-  if (admTab === 'pf') renderPf(); else if (admTab === 'mg') renderMembers(); else fillCfgForm();
+  if (admTab === 'pf') renderPf(); else if (admTab === 'mg') renderMembers(); else { fillCfgForm(); renderDel(); }
 }
 function renderMembers() {
   const f = $('uf').value, box = $('ml'); box.replaceChildren();
@@ -677,6 +693,9 @@ const istFor = (uid, y) => round2(S.rows.filter(e => e.uid === uid && e.datum.sl
 const addDays = (iso, n) => { const [a, b, c] = iso.split('-').map(Number); const d = new Date(a, b - 1, c + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const roleLabel = () => S.isSuper ? 'Super-Admin' : isStdAdm() ? 'Stunden-Admin' : isBoard() ? 'Vorstand' : 'Mitglied';
 const seenSent = new Set();
+let remOpen = {};
+try { remOpen = JSON.parse(localStorage.getItem('st_remopen') || '{}') || {}; } catch (e) {}
+function setRemOpen(id, open) { remOpen[id] = open; try { localStorage.setItem('st_remopen', JSON.stringify(remOpen)); } catch (e) {} render(); }
 
 function renderWho() {
   const w = $('whoami');
@@ -715,9 +734,13 @@ function renderMyStd() {
     if (!r.seen && !seenSent.has('i' + r.id)) { seenSent.add('i' + r.id); fire(F.updateDoc(F.doc(db, 'stdinv', r.id), { seen: true }), 'Rechnung'); }
   });
   S.rem.filter(r => r.uid === uid && String(r.year) === y).sort((a, b) => b.t - a.t).slice(0, 3).forEach(r => {
-    const m = el('div', 'card msg' + (r.seen ? '' : ' new'));
-    m.append(el('b', null, '🔔 Erinnerung vom ' + new Date(r.t).toLocaleDateString('de-DE') + (r.byName ? ' (' + r.byName + ')' : '')), el('p', 'pre', r.text));
-    if (!r.seen) { const b = el('button', 'btn sec', 'Gelesen'); b.onclick = () => fire(F.updateDoc(F.doc(db, 'stdrem', r.id), { seen: true }), 'Erinnerung'); m.append(b); }
+    // zuklappbar: neue sind offen, gelesene zu; die eigene Wahl wird auf dem Gerät gemerkt
+    const m = el('details', 'card msg' + (r.seen ? '' : ' new'));
+    m.open = r.id in remOpen ? remOpen[r.id] : !r.seen;
+    m.append(el('summary', null, '🔔 Erinnerung vom ' + new Date(r.t).toLocaleDateString('de-DE') + (r.byName ? ' (' + r.byName + ')' : '')), el('p', 'pre', r.text));
+    const markSeen = () => { if (!r.seen && !seenSent.has('r' + r.id)) { seenSent.add('r' + r.id); fire(F.updateDoc(F.doc(db, 'stdrem', r.id), { seen: true }), 'Erinnerung'); } };
+    if (!r.seen) { const b = el('button', 'btn sec', 'Gelesen'); b.onclick = () => { setRemOpen(r.id, false); markSeen(); }; m.append(b); }
+    m.addEventListener('toggle', () => { if (m.open === (r.id in remOpen ? remOpen[r.id] : !r.seen)) return; setRemOpen(r.id, m.open); if (!m.open) markSeen(); });
     box.append(m);
   });
 }
@@ -872,6 +895,62 @@ $('cfgSave').onclick = () => {
   const data = { soll: round2(soll), rate: round2(rate), days, name: txt('cfgName', 80), addr: txt('cfgAddr', 300), iban, bic: txt('cfgBic', 20).toUpperCase(), bank: txt('cfgBank', 80), note: txt('cfgNote', 600), t: Date.now(), by: S.user.uid };
   fire(F.setDoc(F.doc(db, 'stdcfg', 'main'), data), 'Einstellungen');
   cfgDirty = false; toast('Einstellungen gespeichert.');
+};
+
+/* --- Daten löschen (nur Super-Admin) --- */
+function renderDel() {
+  $('delCard').hidden = !S.isSuper;
+  if (!S.isSuper) return;
+  const sel = $('delYear'), keep = sel.value, ys = pfYears();
+  sel.replaceChildren(); const a = el('option', null, 'Alle Jahre'); a.value = ''; sel.append(a);
+  ys.forEach(x => { const o = el('option', null, x); o.value = x; sel.append(o); });
+  sel.value = ys.indexOf(keep) > -1 ? keep : '';
+  $('delCfg').disabled = !!sel.value; if (sel.value) $('delCfg').checked = false;
+}
+$('delYear').onchange = renderDel;
+const stripId = list => list.map(x => Object.assign({}, x));
+function delSelection(y, which) {
+  const inY = v => !y || String(v) === y;
+  return {
+    stunden: which.std ? S.rows.filter(e => inY(e.datum.slice(0, 4))) : [],
+    stdrem: which.rem ? S.rem.filter(r => inY(r.year)) : [],
+    stdinv: which.inv ? S.inv.filter(r => inY(r.year)) : [],
+    stdsoll: which.soll ? S.soll.filter(r => inY(r.year)) : [],
+    stdcfg: which.cfg && !y && S.cfg && Object.keys(S.cfg).length ? [Object.assign({ id: 'main' }, S.cfg)] : []
+  };
+}
+function backupFile(sel, y) {
+  const data = { app: 'wexhainis-stundentracker', typ: 'vollbackup', version: 1, exportiert: new Date().toISOString(), jahr: y || 'alle' };
+  Object.keys(sel).forEach(k => { data[k] = stripId(sel[k]); });
+  return download('stundentracker-vollbackup-' + todayISO() + (y ? '-' + y : '') + '.json', JSON.stringify(data, null, 2), 'application/json');
+}
+$('bakAll').onclick = () => { if (backupFile(delSelection('', { std: 1, rem: 1, inv: 1, soll: 1, cfg: 1 }), '')) toast('Backup heruntergeladen.'); };
+$('delBtn').onclick = async () => {
+  if (!S.isSuper) return;
+  const y = $('delYear').value;
+  const which = { std: $('delStd').checked, rem: $('delRem').checked, inv: $('delInv').checked, soll: $('delSoll').checked, cfg: $('delCfg').checked };
+  const sel = delSelection(y, which);
+  const names = { stunden: 'Arbeitsstunden', stdrem: 'Erinnerungen', stdinv: 'Rechnungen', stdsoll: 'individuelle Soll-Werte', stdcfg: 'Einstellungen' };
+  const parts = Object.keys(sel).filter(k => sel[k].length).map(k => sel[k].length + ' ' + names[k]);
+  const total = Object.keys(sel).reduce((s, k) => s + sel[k].length, 0);
+  if (!total) { toast('Für diese Auswahl gibt es nichts zu löschen.'); return; }
+  const what = (y ? 'Jahr ' + y : 'alle Jahre') + ':\n' + parts.join('\n');
+  if (await ask('Folgende Daten werden gelöscht (' + what + ')\n\nWeiter mit Passwortabfrage?', ['Weiter', 'Abbrechen']) !== 0) return;
+  const pw = await askIn('Zur Bestätigung bitte dein Passwort eingeben.', 'Passwort', '', 'password');
+  if (!pw) return;
+  try { await F.reauthenticateWithCredential(S.user, F.EmailAuthProvider.credential(S.user.email, pw)); }
+  catch (e) { toast(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' ? 'Das Passwort ist falsch. Es wurde nichts gelöscht.' : authMsg(e.code || '') + ' Es wurde nichts gelöscht.'); return; }
+  if (!backupFile(sel, y)) { toast('Backup fehlgeschlagen. Es wurde nichts gelöscht.'); return; }
+  if (await ask('Das Backup wurde heruntergeladen. Bitte prüfe, ob die Datei gespeichert ist.\n\nJetzt ' + total + ' Datensätze endgültig löschen? Das lässt sich in der App nicht rückgängig machen.', ['Endgültig löschen', 'Abbrechen']) !== 0) return;
+  const refs = [];
+  Object.keys(sel).forEach(k => sel[k].forEach(d => refs.push(F.doc(db, k, d.id))));
+  try {
+    for (let i = 0; i < refs.length; i += 400) { const b = F.writeBatch(db); refs.slice(i, i + 400).forEach(r => b.delete(r)); await b.commit(); }
+    toast(total + ' Datensätze gelöscht.');
+  } catch (e) {
+    console.error(e);
+    toast(e && e.code === 'permission-denied' ? 'Keine Berechtigung – ein Teil wurde evtl. nicht gelöscht. Sind die aktuellen Firestore-Regeln veröffentlicht?' : 'Löschen abgebrochen: ' + (e.code || e.message) + '. Ein Teil wurde evtl. schon gelöscht.');
+  }
 };
 
 /* --- Rechnung als PDF --- */

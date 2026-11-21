@@ -306,8 +306,9 @@ service cloud.firestore {
     // Stundentracker: Einstellungen (Soll, Betrag je fehlender Stunde, Frist, Rechnungsangaben)
     match /stdcfg/{id} {
       allow read: if isSuper() || stdActive();
-      allow write: if isStdStaff()
+      allow create, update: if isStdStaff()
         && request.resource.data.keys().hasOnly(['soll', 'rate', 'days', 'name', 'addr', 'iban', 'bic', 'bank', 'note', 't', 'by']);
+      allow delete: if isSuper();
     }
     // Stundentracker: individuelles Soll pro Mitglied und Jahr (Dokument-ID = Nutzer-ID + "_" + Jahr)
     match /stdsoll/{id} {
