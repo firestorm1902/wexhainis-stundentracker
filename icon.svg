@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs><pattern id="hz" width="56" height="56" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="56" height="56" fill="#141414"/><rect width="28" height="56" fill="#f5c000"/></pattern></defs>
+  <rect width="512" height="512" fill="#141414"/>
+  <rect y="430" width="512" height="82" fill="url(#hz)"/><rect y="0" width="512" height="34" fill="url(#hz)"/>
+  <g transform="translate(256 262) scale(1.0) translate(-256 -262)">
+  <g transform="translate(222 236)">
+    <circle r="138" fill="#f5c000"/>
+    <circle r="124" fill="#f6f3ea" stroke="#141414" stroke-width="6"/>
+    <line x1="0.0" y1="-96.0" x2="0.0" y2="-116.0" stroke="#141414" stroke-width="9" stroke-linecap="round"/><line x1="52.0" y1="-90.1" x2="58.0" y2="-100.5" stroke="#141414" stroke-width="5" stroke-linecap="round"/><line x1="90.1" y1="-52.0" x2="100.5" y2="-58.0" stroke="#141414" stroke-width="5" stroke-linecap="round"/><line x1="96.0" y1="-0.0" x2="116.0" y2="-0.0" stroke="#141414" stroke-width="9" stroke-linecap="round"/><line x1="90.1" y1="52.0" x2="100.5" y2="58.0" stroke="#141414" stroke-width="5" stroke-linecap="round"/><line x1="52.0" y1="90.1" x2="58.0" y2="100.5" stroke="#141414" stroke-width="5" stroke-linecap="round"/><line x1="0.0" y1="96.0" x2="0.0" y2="116.0" stroke="#141414" stroke-width="9" stroke-linecap="round"/><line x1="-52.0" y1="90.1" x2="-58.0" y2="100.5" stroke="#141414" stroke-width="5" stroke-linecap="round"/><line x1="-90.1" y1="52.0" x2="-100.5" y2="58.0" stroke="#141414" stroke-width="5" stroke-linecap="round"/><line x1="-96.0" y1="0.0" x2="-116.0" y2="0.0" stroke="#141414" stroke-width="9" stroke-linecap="round"/><line x1="-90.1" y1="-52.0" x2="-100.5" y2="-58.0" stroke="#141414" stroke-width="5" stroke-linecap="round"/><line x1="-52.0" y1="-90.1" x2="-58.0" y2="-100.5" stroke="#141414" stroke-width="5" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="-50.8" y2="-35.6" stroke="#141414" stroke-width="13" stroke-linecap="round"/><line x1="0" y1="0" x2="79.7" y2="-46.0" stroke="#141414" stroke-width="9" stroke-linecap="round"/>
+    <circle r="11" fill="#141414"/><circle r="4.5" fill="#f5c000"/>
+  </g>
+  <g transform="translate(352 330) rotate(-14) scale(1.85) translate(-62 -46)">
+    <ellipse cx="50" cy="20" rx="22" ry="14" fill="#fff" opacity=".92" stroke="#141414" stroke-width="1.6" transform="rotate(-24 50 20)"/>
+    <ellipse cx="74" cy="17" rx="20" ry="13" fill="#fff" opacity=".8" stroke="#141414" stroke-width="1.6" transform="rotate(18 74 17)"/>
+    <ellipse cx="60" cy="50" rx="36" ry="22" fill="#f5c000" stroke="#000" stroke-width="3.5"/>
+    <path d="M43 31 v38 M58 28.5 v43 M73 31 v38" stroke="#141414" stroke-width="7.5"/>
+    <circle cx="98" cy="46" r="13" fill="#141414" stroke="#000" stroke-width="2"/>
+    <circle cx="103" cy="42" r="3.4" fill="#f5c000"/>
+    <path d="M24 50 l-15 4.5 l15 4.5z" fill="#f5c000" stroke="#000" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M102 34 q7 -13 16 -13 M96 34 q2 -15 9 -20" stroke="#f5c000" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</g>
+</svg>
