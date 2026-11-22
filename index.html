@@ -7,7 +7,16 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="WexStunden" />
 <meta name="application-name" content="WexStunden" />
-<meta name="theme-color" content="#141414" />
+<meta name="theme-color" content="#f6f3ea" />
+<script>
+/* Hell/Dunkel: Auto (folgt dem Handy), Hell oder Dunkel – gemerkt auf diesem Gerät */
+(function () {
+  var m = 'auto'; try { m = localStorage.getItem('stundentracker_theme') || 'auto'; } catch (e) {}
+  var dark = m === 'dark' || (m === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  var r = document.documentElement; r.dataset.theme = dark ? 'dark' : 'light'; r.dataset.mode = m;
+  var t = document.querySelector('meta[name=theme-color]'); if (t) t.content = dark ? '#121211' : '#f6f3ea';
+})();
+</script>
 <meta name="format-detection" content="telephone=no" />
 <link rel="manifest" href="./manifest.webmanifest?v=1.3.5" />
 <link rel="icon" href="./icon.svg?v=4" type="image/svg+xml" />
@@ -19,7 +28,11 @@
 <title>Wexhainer Stundentracker</title>
 <style>
 :root{--bg:#f6f3ea;--ink:#141414;--mu:#5c574b;--line:#d8d1bf;--wy:#f5c000;--wy2:#fff2bf;--card:#fff;--pen:#c62828;--pet:#1f6b3b;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#121211;--ink:#f1ede2;--mu:#aaa392;--line:#3a372f;--card:#1e1d1a;--wy2:#3a3215;--pen:#ff7366;--pet:#6cc58a;color-scheme:dark}}
+@media (prefers-color-scheme:dark){:root:not([data-theme]){--bg:#121211;--ink:#f1ede2;--mu:#aaa392;--line:#3a372f;--card:#1e1d1a;--wy2:#3a3215;--pen:#ff7366;--pet:#6cc58a;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#121211;--ink:#f1ede2;--mu:#aaa392;--line:#3a372f;--card:#1e1d1a;--wy2:#3a3215;--pen:#ff7366;--pet:#6cc58a;color-scheme:dark}
+:root[data-theme=light]{color-scheme:light}
+.vrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px}.vrow .ver{margin:0}
+.tbtn{font:inherit;font-size:.78rem;color:var(--mu);background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 12px;min-height:34px;flex:none}
 *{box-sizing:border-box}[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:calc(58px + env(safe-area-inset-top,0px)) 14px calc(30px + env(safe-area-inset-bottom,0px))}
@@ -80,7 +93,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 
 <main>
   <h1>🐝 Wexhainer Stunden Tracker 🕒</h1>
-  <div class="ver" id="ver"></div>
+  <div class="vrow"><div class="ver" id="ver"></div><button type="button" class="tbtn" id="themeBtn" aria-label="Hell- oder Dunkelmodus"></button></div>
   <button type="button" class="whoami" id="whoami" hidden aria-label="Konto: Abmelden"></button>
   <div class="mut" id="sum" hidden></div>
   <div class="err" id="err" hidden></div>
@@ -258,7 +271,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.5.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -267,6 +280,22 @@ const todayISO = () => { const d = new Date(); return d.getFullYear() + '-' + St
 const dfmt = s => s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4);
 const MON = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 let toastT;
+const THEME_LABEL = { auto: '◐ Auto', light: '☀ Hell', dark: '☾ Dunkel' };
+function applyTheme() {
+  let m = 'auto'; try { m = localStorage.getItem('stundentracker_theme') || 'auto'; } catch (e) {}
+  const dark = m === 'dark' || (m === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  const r = document.documentElement; r.dataset.theme = dark ? 'dark' : 'light'; r.dataset.mode = m;
+  const t = document.querySelector('meta[name=theme-color]'); if (t) t.content = dark ? '#121211' : '#f6f3ea';
+  $('themeBtn').textContent = THEME_LABEL[m];
+  $('themeBtn').title = m === 'auto' ? 'Automatisch (folgt dem Handy)' : m === 'light' ? 'Immer hell' : 'Immer dunkel';
+}
+$('themeBtn').addEventListener('click', () => {
+  const order = ['auto', 'light', 'dark'], m = document.documentElement.dataset.mode || 'auto', next = order[(order.indexOf(m) + 1) % 3];
+  try { localStorage.setItem('stundentracker_theme', next); } catch (e) {}
+  applyTheme(); toast(next === 'auto' ? 'Automatisch: wie das Handy' : next === 'light' ? 'Heller Modus' : 'Dunkler Modus');
+});
+if (window.matchMedia) { const mq = matchMedia('(prefers-color-scheme: dark)'), on = () => applyTheme(); if (mq.addEventListener) mq.addEventListener('change', on); else if (mq.addListener) mq.addListener(on); }
+applyTheme();
 function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
 
 /* ---------- Zustand ---------- */
