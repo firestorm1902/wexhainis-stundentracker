@@ -5,7 +5,7 @@ Läuft auf GitHub Pages, speichert in Firebase (Firestore) und nutzt dieselben K
 
 ## Funktionen
 - Mitglieder erfassen eigene Stunden (Datum, Stunden, Tätigkeit, Notiz), bearbeiten und löschen sie
-- Stempeluhr: ein-/ausstempeln (mit Pause), die Zeit wird beim Ausstempeln ins Formular übernommen; läuft bei geschlossener App weiter (nur auf dem eigenen Gerät)
+- Stempeluhr mit Bienen-Animation: ein-/ausstempeln (mit Pause), die Zeit wird beim Ausstempeln ins Formular übernommen; läuft bei geschlossener App weiter (nur auf dem eigenen Gerät)
 - Liste nach Monaten mit Summen, Jahresfilter
 - Excel-Export (Blätter „Arbeitsstunden“ und „Summe je Person“)
 - JSON-Backup (Export/Import, auch Backups der Supabase-Version)
