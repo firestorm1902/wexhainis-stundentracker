@@ -325,7 +325,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.6.2';
+const APP_VERSION = '1.6.3';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -656,7 +656,7 @@ function ckUI() {
   $('ckIn').hidden = !!s; $('ckRun').hidden = !s; $('ckDrop').hidden = !s;
   $('ckPause').textContent = pause ? '▶ Weiter' : '⏸ Pause';
   $('ckSub').textContent = pause ? 'Pausiert' : s ? 'seit ' + hmOf(s.start) + ' Uhr' : 'Nicht eingestempelt';
-  $('ckHint').textContent = s ? 'Die Uhr läuft auch bei geschlossener App weiter – aber nur auf diesem Gerät.' : 'Beim Ausstempeln wird die Zeit ins Formular unten übernommen. Du ergänzt nur noch die Tätigkeit.';
+  $('ckHint').textContent = s ? 'Die Uhr läuft auch bei geschlossener App weiter – aber nur auf diesem Gerät.' : 'Beim Ausstempeln wird auf die nächste Viertelstunde aufgerundet und ins Formular unten übernommen. Du ergänzt nur noch die Tätigkeit.';
   const nb = document.querySelector('nav button[data-v=new]'); nb.replaceChildren('Eintragen');
   if (s) nb.append(el('span', 'rdot' + (pause ? ' p' : '')));
 }
@@ -696,7 +696,7 @@ function ckPause() {
 async function ckStop() {
   if (!CK.st) return;
   const ms = ckElapsed(Date.now()), start = CK.st.start;
-  let h = Math.round(ms / 3600000 * 100) / 100;
+  let h = Math.ceil(ms / 900000) / 4;   // auf die nächste volle Viertelstunde aufrunden
   if (h > 24) {
     const c = await ask('Die Uhr lief ' + nf(h) + ' Stunden – mehr als 24 Stunden sind pro Eintrag nicht möglich.\n\nAls 24 Stunden übernehmen?', ['Als 24 Std. übernehmen', 'Uhr weiterlaufen lassen', 'Verwerfen']);
     if (c === 1) return;
@@ -705,13 +705,13 @@ async function ckStop() {
   }
   const from = (ms % 60000) / 60000;
   CK.st = null; ckSave(); ckUI();
-  if (!(h > 0)) { ckLoop(); toast('Zu kurz für einen Eintrag – nichts übernommen.'); return; }
+  if (ms < 60000) { ckLoop(); toast('Unter einer Minute – nichts übernommen.'); return; }
   const n = Date.now(), rd = reduced(), fl = rd ? 0 : 800;
   // Ziel: Biene vollendet die Runde, dann Waben-Funken und die Stunden poppen in der Mitte auf
   CK.anim = rd ? null : { t0: n, end: n + fl, from, txt: ckFmt(ms) };
   CK.res = { txt: nf(h) + ' Std.', from: n + fl, until: n + fl + 2600 };
   ckLoop(); ckBuzz();
-  setTimeout(() => { ckBurst(50, 50, 12, 78); ckPop(); $('ckSub').textContent = 'ins Formular übernommen'; }, fl);
+  setTimeout(() => { ckBurst(50, 50, 12, 78); ckPop(); $('ckSub').textContent = 'auf ¼ Std. aufgerundet'; }, fl);
   if (S.editId) resetForm();
   $('datum').value = isoOf(start); $('std').value = String(h).replace('.', ',');
   $('ft').textContent = 'Neuer Eintrag aus der Stempeluhr';
