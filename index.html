@@ -325,7 +325,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.6.1';
+const APP_VERSION = '1.6.2';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -502,6 +502,7 @@ function syncUsers() {
 
 /* ---------- Anzeige ---------- */
 function setView(v) {
+  if (v === 'new') ckClean();
   S.view = v; syncUsers(); render(); window.scrollTo(0, 0);
 }
 function fillSelect(sel, values, label) {
@@ -660,11 +661,13 @@ function ckUI() {
   if (s) nb.append(el('span', 'rdot' + (pause ? ' p' : '')));
 }
 /* Effekte: Wellen, Ziffern-Pop, Sechsecke (Waben) */
+const ckVis = () => S.view === 'new' && !document.hidden && !reduced();
+function ckClean() { document.querySelectorAll('#clock .hx').forEach(n => n.remove()); document.querySelectorAll('#clock .go, #fcard.flash').forEach(n => n.classList.remove('go', 'flash')); }
 function ckRestart(n) { n.classList.remove('go'); void n.offsetWidth; n.classList.add('go'); }
-function ckRipple() { if (!reduced()) $('ckDial').querySelectorAll('.rip').forEach(ckRestart); }
-function ckPop() { if (!reduced()) ckRestart($('ckTime')); }
+function ckRipple() { if (ckVis()) $('ckDial').querySelectorAll('.rip').forEach(ckRestart); }
+function ckPop() { if (ckVis()) ckRestart($('ckTime')); }
 function ckBurst(x, y, n, dist) {
-  if (reduced()) return;
+  if (!ckVis()) return;
   const d = $('ckDial');
   for (let i = 0; i < n; i++) {
     const a = i / n * 2 * Math.PI + Math.random() * .5, r = dist * (.7 + Math.random() * .6), h = el('i', 'hx');
@@ -712,7 +715,7 @@ async function ckStop() {
   if (S.editId) resetForm();
   $('datum').value = isoOf(start); $('std').value = String(h).replace('.', ',');
   $('ft').textContent = 'Neuer Eintrag aus der Stempeluhr';
-  setTimeout(() => { const f = $('fcard'); ckRestart(f); f.classList.add('flash'); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, fl + 500);
+  setTimeout(() => { const f = $('fcard'); if (!ckVis()) return; ckRestart(f); f.classList.add('flash'); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, fl + 500);
   setTimeout(() => { if (S.view === 'new') $('tat').focus({ preventScroll: true }); }, fl + 1100);
 }
 $('ckIn').onclick = ckStart; $('ckPause').onclick = ckPause; $('ckOut').onclick = ckStop;
