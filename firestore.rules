@@ -3,8 +3,6 @@ rules_version = '2';
 // Sicherheitsregeln für die Strichliste UND den Wexhainer Stundentracker (gleiches Firebase-Projekt, gleiche Konten).
 // Wichtig: Diese Datei enthält beide Apps. Beim Veröffentlichen ersetzt sie die bisherigen Regeln komplett.
 // In der Firebase-Konsole unter Firestore → Regeln komplett einfügen und „Veröffentlichen“.
-// MASSGEBLICH: diese Datei im Repo firestorm1902/wexhainis-stundentracker. Kopien in anderen Repos sind nur Spiegel.
-// Vor jeder Änderung die in Firebase veröffentlichten Regeln übernehmen und nur die eigenen Abschnitte ändern.
 //
 // Rollen:
 //   Super-Admin – steht unten in superUids(); darf alles, ernennt Admins, sperrt und entfernt Konten
