@@ -80,6 +80,20 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 .st{font-size:.8rem}.st.ok{color:var(--pet)}.st.warn{color:var(--pen)}
 .ok-btns{display:flex;gap:6px;margin-top:8px}.ok-btns .btn{margin-top:0;min-height:42px;padding:8px 10px}
 .badge{display:inline-block;min-width:17px;height:17px;line-height:17px;padding:0 4px;margin-left:3px;border-radius:9px;background:var(--pen);color:#fff;font-size:.68rem;font-weight:700;vertical-align:2px;text-align:center}
+.applinks{margin:16px 0 4px}.applinks[hidden]{display:none}
+.alhead{font:700 .78rem/1.2 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--mu);margin:4px 2px 8px}
+.algrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.alcard{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink);text-decoration:none;box-shadow:0 2px 0 var(--line);transition:transform .12s,box-shadow .12s,border-color .12s}
+.alcard:hover,.alcard:focus-visible{border-color:var(--wy);box-shadow:0 4px 14px rgba(0,0,0,.12);transform:translateY(-1px)}.alcard:active{transform:translateY(1px)}
+.alimg{flex:none;width:52px;height:52px;border-radius:14px;object-fit:cover;background:#141414;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.alph{display:grid;place-items:center;font:700 1.5rem/1 Oswald,system-ui,sans-serif;color:var(--wy)}
+.altxt{display:flex;flex-direction:column;min-width:0;flex:1}.altxt b{font-size:1.02rem}.altxt small{color:var(--mu);font-size:.82rem;line-height:1.3}
+.algo{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--wy);color:#141414;font-weight:800}
+.aledit{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--line);border-radius:12px;padding:10px;margin:10px 0}
+.alprev{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}.alprev .btn{margin:0;min-height:34px;padding:5px 8px;font-size:.8rem;width:auto}
+.alfields{flex:1;min-width:0}.alfields label:first-child{margin-top:0}
+.alrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.alrow .btn{margin:0;width:auto;flex:1 1 auto;min-height:38px;padding:6px 10px;font-size:.88rem}
+.alself{font-size:.75rem;color:var(--mu);margin-top:4px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 
 /* Stempeluhr */
@@ -153,6 +167,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
       <button class="btn sec" id="aForgot">Passwort vergessen?</button>
       <small class="mut" style="display:block;margin-top:10px">Hast du schon ein Konto in der Getränke-Strichliste, melde dich hier mit denselben Zugangsdaten an.</small>
     </div>
+    <div id="appLinksA" class="applinks" hidden></div>
   </section>
 
   <section id="vGate" hidden>
@@ -197,6 +212,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
       <small class="mut" id="bsHint" style="display:block;margin-top:8px">Einträge zählen, sobald ein Admin sie genehmigt hat.</small>
       <button class="btn sec" id="bc" hidden>Abbrechen</button>
     </div>
+    <div id="appLinksM" class="applinks" hidden></div>
   </section>
 
   <section id="vList" hidden>
@@ -287,6 +303,19 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
         <button class="btn" id="cfgSave">Speichern</button>
         <small class="mut" style="display:block;margin-top:8px">Änderungen gelten für alle Jahre ohne individuelles Soll. Bereits erstellte Rechnungen bleiben unverändert.</small>
       </div>
+      <div class="card" id="alCard" hidden>
+        <h2>Links zu anderen Apps</h2>
+        <small class="mut">Kacheln mit Bild, die zu anderen Apps des Vereins führen. Dieselbe Liste erscheint auch in der Getränke-Strichliste; ein Link auf die gerade geöffnete App wird dort jeweils ausgeblendet.</small>
+        <label class="chk"><input type="checkbox" id="alLogin"><span>auf der Anmeldeseite zeigen (auch für noch nicht Angemeldete)</span></label>
+        <label class="chk"><input type="checkbox" id="alHome"><span>nach dem Anmelden unten auf der Startseite zeigen</span></label>
+        <label for="alTitle">Überschrift</label><input id="alTitle" maxlength="40">
+        <div id="alItems"></div>
+        <div class="alrow" id="alAdd"></div>
+        <div id="alPv"></div>
+        <input type="file" id="alFile" accept="image/*" hidden>
+        <button class="btn" id="alSave" disabled>Speichern</button>
+        <button class="btn sec" id="alReset" hidden>Änderungen verwerfen</button>
+      </div>
       <div class="card danger" id="delCard" hidden>
         <h2>Daten löschen</h2>
         <small class="mut">Nur für den Super-Admin. Vorher wird dein Passwort abgefragt und automatisch ein Backup (JSON) heruntergeladen. Konten und alle Daten der Getränke-Strichliste bleiben unberührt.</small>
@@ -325,7 +354,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.6.3';
+const APP_VERSION = '1.7.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -355,7 +384,7 @@ function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; c
 /* ---------- Zustand ---------- */
 const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], view: 'new', editId: null, registering: false, dbError: '' };
 let F = {}, db, auth, rowsKey = '';
-const unsub = { me: null, rows: null, users: null, cfg: null, soll: null, inv: null, rem: null };
+const unsub = { me: null, rows: null, users: null, cfg: null, soll: null, inv: null, rem: null, apps: null };
 const DATA_L = ['rows', 'cfg', 'soll', 'inv', 'rem'];
 const stopL = k => { if (unsub[k]) { unsub[k](); unsub[k] = null; } };
 
@@ -459,6 +488,10 @@ async function initFirebase() {
   try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
   catch (e) { db = F.getFirestore(app); }
   auth = F.getAuth(app);
+  // Links zu anderen Apps: config/applinks ist laut Regeln auch vor der Anmeldung lesbar
+  unsub.apps = F.onSnapshot(F.doc(db, 'config', 'applinks'), snap => {
+    S.appLinks = snap.exists() ? snap.data() : null; renderAppLinks(); if (S.isSuper && S.view === 'adm' && admTab === 'cfg') renderAlEdit();
+  }, err => console.warn('applinks', err));
   F.onAuthStateChanged(auth, async u => {
     stopL('me'); stopL('users'); DATA_L.forEach(stopL); rowsKey = '';
     Object.assign(S, { user: u, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], editId: null, dbError: '' });
@@ -516,6 +549,7 @@ function render() {
   ckSync(ok);
   $('ver').textContent = 'Version ' + APP_VERSION;
   renderWho();
+  renderAppLinks();
   const nOk = ok && canEditAll() ? S.rows.filter(e => stOf(e) === 'offen' && canDecide(e)).length : 0;
   const badge = (b, t) => { b.textContent = t; if (nOk) b.append(el('span', 'badge', nOk > 99 ? '99+' : String(nOk))); };
   badge($('nadm'), 'Verwaltung'); badge($('tabOk'), 'Genehmigen');
@@ -876,6 +910,7 @@ $('ba').onclick = async () => {
 function renderAdm() {
   document.querySelectorAll('#admTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === admTab));
   $('admOk').hidden = admTab !== 'ok'; $('admPf').hidden = admTab !== 'pf'; $('admMg').hidden = admTab !== 'mg'; $('admCfg').hidden = admTab !== 'cfg';
+  if (admTab === 'cfg') renderAlEdit();
   if (admTab === 'ok') renderOk(); else if (admTab === 'pf') renderPf(); else if (admTab === 'mg') renderMembers(); else { fillCfgForm(); renderDel(); }
 }
 function renderMembers() {
@@ -1300,6 +1335,124 @@ async function invPdf(r) {
   const fn = 'Rechnung-' + r.nr + '-' + String(r.name || '').replace(/[^A-Za-z0-9äöüÄÖÜß-]+/g, '_') + '.pdf';
   if (download(fn, d.output('blob'), 'application/pdf')) toast('PDF erstellt.');
 }
+
+/* ---------- Links zu anderen Apps ----------
+   config/applinks = { login: bool, home: bool, title, items: [{ name, desc, url, img }], t }
+   Gleiches Format wie in der Getränke-Strichliste. Vor der Anmeldung lesbar, ändern nur der Super-Admin.
+   Ein Eintrag, der auf diese App selbst zeigt, wird hier ausgeblendet. */
+const AL_PRESETS = [
+  { name: 'WexStrichliste', desc: 'Getränke per Scan buchen', url: 'https://firestorm1902.github.io/wexhainis-strichliste/', img: 'https://firestorm1902.github.io/wexhainis-strichliste/icons/icon-192.png' },
+  { name: 'WexStunden', desc: 'Arbeitsstunden für den Verein erfassen', url: 'https://firestorm1902.github.io/wexhainis-stundentracker/', img: 'https://firestorm1902.github.io/wexhainis-stundentracker/icon-192.png' }
+];
+let alDraft = null, alDirty = false, alImgFor = -1;
+const alCfg = () => Object.assign({ login: true, home: true, title: 'Weitere Apps vom Verein', items: [] }, S.appLinks || {});
+const alOkUrl = u => /^https:\/\/[^\s"'<>]+$/i.test(String(u || ''));
+const alImgOk = u => /^data:image\/(jpeg|png|webp);base64,/.test(String(u || '')) || alOkUrl(u);
+const alNorm = u => { try { const x = new URL(u, location.href); return x.host + x.pathname.replace(/index\.html$/, '').replace(/\/?$/, '/'); } catch (e) { return ''; } };
+const alIsSelf = u => alNorm(u) === alNorm(location.href);
+function alIcon(it) {
+  if (alImgOk(it.img)) { const i = el('img', 'alimg'); i.src = it.img; i.alt = ''; i.loading = 'lazy'; i.onerror = () => i.replaceWith(alIcon({ name: it.name })); return i; }
+  return el('span', 'alimg alph', String(it.name || '?').trim().slice(0, 1).toUpperCase() || '?');
+}
+function alBlock(c) {
+  const L = (c.items || []).filter(x => x.name && alOkUrl(x.url) && !alIsSelf(x.url));
+  if (!L.length) return null;
+  const f = document.createDocumentFragment(), g = el('div', 'algrid');
+  f.append(el('div', 'alhead', c.title || 'Weitere Apps vom Verein'), g);
+  L.forEach(x => {
+    const a = el('a', 'alcard'); a.href = x.url; a.target = '_blank'; a.rel = 'noopener';
+    const t = el('span', 'altxt'); t.append(el('b', null, x.name)); if (x.desc) t.append(el('small', null, x.desc));
+    const go = el('span', 'algo', '↗'); go.setAttribute('aria-hidden', 'true');
+    a.append(alIcon(x), t, go); g.append(a);
+  });
+  return f;
+}
+let alKey = '';
+function renderAppLinks() {
+  const c = alCfg(), A = $('appLinksA'), M = $('appLinksM');
+  const key = JSON.stringify(c);
+  if (key !== alKey) { alKey = key; [A, M].forEach(b => { b.replaceChildren(); const x = alBlock(c); if (x) b.append(x); }); }
+  const has = !!A.firstChild, acc = access();
+  A.hidden = !(acc === 'auth' && c.login && has);
+  M.hidden = !(acc === 'ok' && c.home && has);
+}
+async function alImage(file) { // quadratisch zuschneiden, 192 px, möglichst klein (PNG mit Transparenz, sonst JPEG)
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Bild konnte nicht gelesen werden')); i.src = url; });
+    const w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h), N = 192;
+    const cv = document.createElement('canvas'); cv.width = cv.height = N;
+    cv.getContext('2d').drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, N, N);
+    let data = cv.toDataURL('image/png');
+    if (data.length > 60000) {
+      const c2 = document.createElement('canvas'); c2.width = c2.height = N; const x = c2.getContext('2d');
+      x.fillStyle = '#fff'; x.fillRect(0, 0, N, N); x.drawImage(cv, 0, 0);
+      let q = .85; data = c2.toDataURL('image/jpeg', q); while (data.length > 60000 && q > .4) { q -= .1; data = c2.toDataURL('image/jpeg', q); }
+    }
+    return data;
+  } finally { URL.revokeObjectURL(url); }
+}
+function alFieldInput(label, val, max, onIn, opts) {
+  const w = document.createDocumentFragment(), l = el('label', null, label), i = el('input');
+  i.value = val || ''; if (max) i.maxLength = max;
+  Object.assign(i, opts || {}); i.oninput = () => { onIn(i.value.trim(), i); alChanged(); };
+  w.append(l, i); return w;
+}
+function alChanged() {
+  alDirty = true; $('alSave').disabled = false; $('alReset').hidden = false;
+  const pv = $('alPv'); pv.replaceChildren(); const b = alBlock(alDraft);
+  if (b) { pv.append(el('label', null, 'Vorschau (so sehen es die Mitglieder in dieser App)')); const d = el('div', 'applinks'); d.style.margin = '0'; d.append(b); pv.append(d); }
+}
+function renderAlEdit() {
+  const card = $('alCard'); card.hidden = !S.isSuper; if (!S.isSuper) return;
+  if (!alDraft) { alDraft = JSON.parse(JSON.stringify(alCfg())); alDraft.items = alDraft.items || []; alDirty = false; }
+  const d = alDraft, L = d.items, box = $('alItems');
+  if (document.activeElement && card.contains(document.activeElement) && document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'checkbox' && alDirty) return; // Tippen nicht unterbrechen
+  $('alLogin').checked = !!d.login; $('alHome').checked = !!d.home; $('alTitle').value = d.title || '';
+  box.replaceChildren();
+  L.forEach((x, i) => {
+    const row = el('div', 'aledit'), pv = el('div', 'alprev'), fl = el('div', 'alfields');
+    const bi = el('button', 'btn sec', '🖼 Bild …'); bi.onclick = () => { alImgFor = i; $('alFile').click(); };
+    pv.append(alIcon(x), bi);
+    if (x.img) { const bn = el('button', 'btn sec', 'Bild weg'); bn.onclick = () => { x.img = ''; alChanged(); renderAlEdit(); }; pv.append(bn); }
+    fl.append(alFieldInput('Name', x.name, 30, v => { x.name = v; }));
+    fl.append(alFieldInput('Kurzbeschreibung', x.desc, 60, v => { x.desc = v; }));
+    fl.append(alFieldInput('Link (https://…)', x.url, 300, (v, inp) => { x.url = v; inp.style.borderColor = v && !alOkUrl(v) ? 'var(--pen)' : ''; }, { inputMode: 'url', autocapitalize: 'off', spellcheck: false }));
+    if (alIsSelf(x.url)) fl.append(el('div', 'alself', 'Das ist diese App – hier wird der Link ausgeblendet, in der Strichliste aber angezeigt.'));
+    const r = el('div', 'alrow');
+    const mk = (t, fn, dis, cls) => { const b = el('button', 'btn sec' + (cls ? ' ' + cls : ''), t); b.disabled = !!dis; b.onclick = fn; r.append(b); };
+    mk('↑', () => { [L[i - 1], L[i]] = [L[i], L[i - 1]]; alChanged(); renderAlEdit(); }, i === 0);
+    mk('↓', () => { [L[i + 1], L[i]] = [L[i], L[i + 1]]; alChanged(); renderAlEdit(); }, i === L.length - 1);
+    mk('Entfernen', async () => { if (await ask('„' + (x.name || 'App') + '“ entfernen?', ['Entfernen', 'Abbrechen']) === 0) { L.splice(i, 1); alChanged(); renderAlEdit(); } }, false, 'dng');
+    fl.append(r); row.append(pv, fl); box.append(row);
+  });
+  const add = $('alAdd'); add.replaceChildren();
+  const ab = el('button', 'btn sec', '+ App hinzufügen'); ab.onclick = () => { L.push({ name: '', desc: '', url: 'https://', img: '' }); alChanged(); renderAlEdit(); }; add.append(ab);
+  AL_PRESETS.filter(p => !L.some(x => alNorm(x.url) === alNorm(p.url))).forEach(p => {
+    const b = el('button', 'btn sec', '+ ' + p.name); b.onclick = () => { L.push(Object.assign({}, p)); alChanged(); renderAlEdit(); }; add.append(b);
+  });
+  $('alSave').disabled = !alDirty; $('alReset').hidden = !alDirty;
+  if (alDirty) alChanged(); else { const pv = $('alPv'); pv.replaceChildren(); const b = alBlock(d); if (b) { pv.append(el('label', null, 'Vorschau (so sehen es die Mitglieder in dieser App)')); const w = el('div', 'applinks'); w.style.margin = '0'; w.append(b); pv.append(w); } }
+}
+$('alLogin').onchange = e => { alDraft.login = e.target.checked; alChanged(); };
+$('alHome').onchange = e => { alDraft.home = e.target.checked; alChanged(); };
+$('alTitle').oninput = e => { alDraft.title = e.target.value; alChanged(); };
+$('alFile').onchange = e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f || alImgFor < 0 || !alDraft.items[alImgFor]) return;
+  alImage(f).then(img => { alDraft.items[alImgFor].img = img; alChanged(); renderAlEdit(); }).catch(err => toast(err.message));
+};
+$('alReset').onclick = () => { alDraft = null; alDirty = false; renderAlEdit(); };
+$('alSave').onclick = () => {
+  if (!S.isSuper || !alDraft) return;
+  const L = alDraft.items || [];
+  if (L.some(x => !x.name || !alOkUrl(x.url))) { toast('Bitte bei jeder App einen Namen und einen Link mit https:// eintragen.'); return; }
+  const v = { login: !!alDraft.login, home: !!alDraft.home, title: String(alDraft.title || '').trim().slice(0, 40), t: Date.now(),
+    items: L.map(x => ({ name: String(x.name).slice(0, 30), desc: String(x.desc || '').slice(0, 60), url: x.url, img: alImgOk(x.img) ? x.img : '' })) };
+  if (JSON.stringify(v).length > 900000) { toast('Zu groß – bitte kleinere Bilder verwenden.'); return; }
+  S.appLinks = v; alDraft = null; alDirty = false;
+  fire(F.setDoc(F.doc(db, 'config', 'applinks'), v), 'Links speichern');
+  toast('Gespeichert – gilt auch für die Getränke-Strichliste.'); alKey = ''; renderAppLinks(); renderAlEdit();
+};
 
 /* ---------- Start ---------- */
 document.querySelectorAll('nav button').forEach(b => { b.onclick = () => setView(b.dataset.v); });

@@ -241,9 +241,9 @@ service cloud.firestore {
     }
 
     // Easter-Egg-Regeln, Gruppen, Sichtbarkeit, Kontakt, Bestenliste: alle lesen, nur Super-Admins ändern
-    // Gruppen, Kontakt und Datenschutz sind schon vor der Anmeldung lesbar (Registrierung)
+    // Gruppen, Kontakt, Datenschutz und die Links zu anderen Apps sind schon vor der Anmeldung lesbar (Anmeldeseite)
     match /config/{id} {
-      allow read: if signedIn() || id in ['groups', 'contact', 'privacy', 'theme', 'texts'];
+      allow read: if signedIn() || id in ['groups', 'contact', 'privacy', 'theme', 'texts', 'applinks'];
       // Partymodus dürfen auch Getränke-Admins starten und beenden – aber nur, wenn der Super-Admin ihn erlaubt hat
       // Datum des letzten Backups dürfen alle Admins setzen
       allow write: if isSuper() || (id in ['backup', 'packlist'] && isAdmin()) || (id == 'party' && isAdmin()
@@ -289,10 +289,98 @@ service cloud.firestore {
     match /prefs/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
+    // Strichliste – Bus-Check-in. Zwei Wege, beide prüft der Server:
+    //  1. Standort: Pro Bus teilt ein Bus-Leiter (days.bus.buses.{Bus}.leader) seinen Standort (busloc). Ein Mitglied
+    //     schreibt busgeo (sein Standort) und checkins in einem Zug; erlaubt nur, wenn es nahe beim Bus-Leiter ist
+    //     (ca. 400 m, Leiter-Standort höchstens 3 Minuten alt) und der Check-in offen ist. Standorte lesen nur Admins.
+    //  2. QR-Code: Der Admin zeigt einen Code, der alle 20 Sekunden wechselt (buscode, nur Admins lesen).
+    // Bus-Leiter dürfen in ihrem Bus registrierte Personen ohne Handy eintragen (nur aus days.bus.roster) und Einträge entfernen.
+    function busCfg(day) { return get(/databases/$(database)/documents/days/$(day)).data.get('bus', {}); }
+    function busIsOpen(day) { let b = busCfg(day); return b.get('open', false) == true && request.time.toMillis() < b.get('until', 0); }
+    function busLeaderOf(day, bus) { return busCfg(day).get('buses', {}).get(bus, {}).get('leader', '') == request.auth.uid; }
+    match /buscode/{day} {
+      allow read, write: if isAdmin();
+    }
+    function busOk(d) {
+      let b = get(/databases/$(database)/documents/buscode/$(d.day)).data;
+      return d.keys().hasOnly(['uid', 'name', 'day', 't', 'code', 'how', 'bus'])
+        && d.uid == request.auth.uid && d.how == 'qr' && d.code is string && d.day is string
+        && b.get('open', false) == true && request.time.toMillis() < b.get('until', 0)
+        && (d.code == b.get('code', '-') || d.code == b.get('prev', '-'));
+    }
+    match /busloc/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update: if isAdmin() || (slActive()
+        && request.resource.data.keys().hasOnly(['uid', 'day', 'bus', 'lat', 'lng', 'acc', 't'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.day is string && request.resource.data.bus is string
+        && request.resource.data.lat is number && request.resource.data.lng is number
+        && id == request.resource.data.day + '_' + request.resource.data.bus
+        && busLeaderOf(request.resource.data.day, request.resource.data.bus) && busIsOpen(request.resource.data.day));
+      allow delete: if isAdmin();
+    }
+    function geoNear(d, L) {
+      return request.time.toMillis() - L.get('t', 0) < 180000
+        && math.abs(d.lat - L.lat) < 0.004 && math.abs(d.lng - L.lng) < 0.006;
+    }
+    match /busgeo/{id} {
+      allow read, delete: if isAdmin();
+      // update: ein alter eigener Standort (z. B. nach Entfernen aus dem Check-in) darf überschrieben werden
+      allow create, update: if slActive()
+        && request.resource.data.keys().hasOnly(['uid', 'day', 'bus', 'lat', 'lng', 't'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.day is string && request.resource.data.bus is string
+        && request.resource.data.lat is number && request.resource.data.lng is number
+        && id == request.resource.data.day + '_' + request.auth.uid
+        && busIsOpen(request.resource.data.day)
+        && geoNear(request.resource.data, get(/databases/$(database)/documents/busloc/$(request.resource.data.day + '_' + request.resource.data.bus)).data);
+    }
+    match /checkins/{id} {
+      // Anwesenheit sehen alle Mitglieder (ohne Standort)
+      allow read: if signedIn();
+      allow create: if isAdmin()
+        // QR-Code
+        || (slActive() && request.resource.data.day is string
+            && id == request.resource.data.day + '_' + request.auth.uid && busOk(request.resource.data))
+        // Standort: nur zusammen mit busgeo im selben Schreibvorgang
+        || (slActive() && request.resource.data.day is string && request.resource.data.how == 'geo'
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.keys().hasOnly(['uid', 'name', 'day', 'bus', 't', 'how'])
+            && id == request.resource.data.day + '_' + request.auth.uid
+            && getAfter(/databases/$(database)/documents/busgeo/$(id)).data.bus == request.resource.data.bus)
+        // Bus-Leiter trägt jemanden (oder sich selbst) in seinen Bus ein
+        || (slActive() && request.resource.data.how == 'leader'
+            && request.resource.data.day is string && request.resource.data.bus is string && request.resource.data.uid is string
+            && request.resource.data.keys().hasOnly(['uid', 'name', 'day', 'bus', 't', 'how', 'by', 'byName'])
+            && request.resource.data.by == request.auth.uid
+            && id == request.resource.data.day + '_' + request.resource.data.uid
+            && busLeaderOf(request.resource.data.day, request.resource.data.bus) && busIsOpen(request.resource.data.day)
+            // nur registrierte, nicht gesperrte Mitglieder (Liste days.bus.roster, beim Start vom Admin gespeichert)
+            && request.resource.data.uid in busCfg(request.resource.data.day).get('roster', {})
+            && request.resource.data.name == busCfg(request.resource.data.day).get('roster', {})[request.resource.data.uid]);
+      allow update: if false;
+      allow delete: if isAdmin() || (slActive() && busLeaderOf(resource.data.day, resource.data.get('bus', '')));
+    }
     // Tageszusammenfassungen für die tägliche Zählerprüfung: nur der Super-Admin
     match /dsum/{id} { allow read, write: if isSuper(); }
+    // Strichliste – Nachrichten vom Super-Admin (an alle, an Admins und Vorstand oder an einzelne Mitglieder).
+    // Jeder liest nur, was für ihn bestimmt ist; schreiben und löschen nur der Super-Admin.
+    match /bcmsg/{id} {
+      allow read: if isSuper() || (signedIn() && (resource.data.to == 'all'
+        || (resource.data.to == 'staff' && isReader())
+        || request.auth.uid in resource.data.get('uids', [])));
+      allow write: if isSuper();
+    }
+    // Strichliste – Lesebestätigung für Nachrichten (bcmsg): jeder nur seine eigene, nur der Super-Admin liest und löscht
+    match /bcread/{id} {
+      allow read, delete: if isSuper();
+      allow create, update: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['bc', 'uid', 'name', 't'])
+        && request.resource.data.bc is string && id == request.resource.data.bc + '_' + request.auth.uid;
+    }
 
-    // Protokoll aller Änderungen: jeder schreibt eigene Einträge, nur Super-Admins lesen, niemand ändert oder löscht
+    // Protokoll aller Änderungen: jeder schreibt eigene Einträge, nur Super-Admins lesen, niemand ändert sie.
+    // Löschen darf nur der Super-Admin (Strichliste: „Zurücksetzen / Werkszustand“ mit Passwort und Backup vorher).
     match /log/{id} {
       allow read: if isSuper();
       // Super-Admin: fehlende Einträge aus einem Backup ergänzen (ändern bleibt unmöglich)
@@ -301,7 +389,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['t', 'date', 'uid', 'who', 'type', 'text', 'day'])
         && request.resource.data.text is string && request.resource.data.text.size() <= 300
         && request.resource.data.type in ['person', 'buchung', 'einladen', 'getraenk', 'tag', 'egg', 'system']);
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isSuper();
     }
 
     // Posteingang: Nachrichten, Fehlermeldungen und Feedback an den Super-Admin.
