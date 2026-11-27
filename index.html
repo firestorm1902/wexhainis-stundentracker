@@ -119,7 +119,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 .ewarn{font-size:.82rem;background:var(--wy2);border-radius:8px;padding:6px 8px;margin-top:6px}
 .abr{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.abr .chk{flex:1}.hin{width:70px;min-height:38px;padding:6px 8px}
 .eshform{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px}.eshform>input{margin-top:6px}
-.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric],.eshrow input[inputmode=decimal]{width:54px;flex:none}.eshrow input.ttl{flex:1;min-width:0}.eshform.task{border-style:dashed}.ecatbox .eshform{border:none;border-top:1px solid var(--line);border-radius:0;padding:8px 0 4px;margin-top:6px}.ecatbox .eshrow{gap:4px}.ecatbox{border:1px solid var(--line);border-radius:12px;padding:6px 8px;margin-top:10px;background:rgba(127,127,127,.04)}.ecatbox .ecatin{font-weight:700}.eh3.ecat{margin:14px 0 2px}.eshrow .grow{flex:1}
+.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric],.eshrow input[inputmode=decimal]{width:54px;flex:none}.eshrow input.ttl{flex:1;min-width:0}.eshform.task{border-style:dashed}.ecatbox .eshform{border:none;border-top:1px solid var(--line);border-radius:0;padding:8px 0 4px;margin-top:6px}.ecatbox .eshrow{gap:4px}.ecatbox{border:1px solid var(--line);border-radius:12px;padding:6px 8px;margin-top:10px;background:rgba(127,127,127,.04)}.ecatbox .ecatin{font-weight:700}.eh3.ecat{margin:14px 0 2px}details.ecatd{border-top:1px solid var(--line);margin-top:4px}details.ecatd>summary{display:flex;align-items:center;gap:6px;padding:12px 0;cursor:pointer;list-style:none;font-size:1.05rem}details.ecatd>summary::-webkit-details-marker{display:none}details.ecatd>summary::before{content:'▸';display:inline-block;transition:transform .15s;color:var(--mut,#888)}details.ecatd[open]>summary::before{transform:rotate(90deg)}.ecats{margin-left:auto;font-weight:700}details.ecatd>.eshift{margin-left:14px}.eshrow .grow{flex:1}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 
 /* Stempeluhr */
@@ -384,7 +384,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.10.1';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -1803,14 +1803,30 @@ function planWarn(e, plan) {
     const n = (plan[s.id] || []).length, need = +s.need || 0;
     if (n < need) {
       const could = eMelds.filter(m => (m.s || {})[s.id] && !(plan[s.id] || []).includes(m.uid)).map(m => m.name);
-      out.push('⚠ ' + shLabel(s) + ': es fehlen ' + (need - n) + (could.length ? ' – gemeldet, aber woanders eingeteilt oder am Limit: ' + could.join(', ') : ' – keine weiteren Meldungen'));
+      out.push({ s, t: '⚠ es fehlen ' + (need - n) + (could.length ? ' – gemeldet, aber woanders eingeteilt oder am Limit: ' + could.join(', ') : ' – keine weiteren Meldungen') });
     }
   });
   const used = new Set([].concat(...Object.values(plan)));
   const res = eMelds.filter(m => !used.has(m.uid) && !isDecl(m)).map(m => m.name);
-  if (res.length) out.push('Ersatz (gemeldet, nicht eingeteilt): ' + res.join(', '));
-  eMelds.forEach(m => { (sh.filter(s => (plan[s.id] || []).includes(m.uid) && !(m.s || {})[s.id])).forEach(s => out.push('ℹ ' + m.name + ' ist in ' + shLabel(s) + ' eingeteilt, hat dafür aber nichts angegeben.')); });
+  if (res.length) out.push({ s: null, t: 'Ersatz (gemeldet, nicht eingeteilt): ' + res.join(', ') });
+  eMelds.forEach(m => { (sh.filter(s => (plan[s.id] || []).includes(m.uid) && !(m.s || {})[s.id])).forEach(s => out.push({ s, t: 'ℹ ' + m.name + ' ist hier eingeteilt, hat dafür aber nichts angegeben.' })); });
   return out;
+}
+/* Kategorien (z. B. Kasse, Verkauf) als aufklappbare Abschnitte; Aufklapp-Zustand bleibt beim Neuzeichnen erhalten */
+const CO = {};
+function catSections(e, tab, f, rowFn, sumFn) {
+  if (!eCats(e).length) { (e.shifts || []).forEach(s => f.append(rowFn(s, false))); return; }
+  const seen = new Set();
+  (e.shifts || []).forEach(s => {
+    if (isTask(s) || !s.cat) { f.append(rowFn(s, false)); return; }
+    if (seen.has(s.cat)) return; seen.add(s.cat);
+    const list = realSh(e).filter(x => x.cat === s.cat), key = e.id + '|' + tab + '|' + s.cat;
+    const d = el('details', 'ecatd'); d.open = !!CO[key]; d.ontoggle = () => { CO[key] = d.open; };
+    const sm = el('summary'); sm.append(el('b', null, s.cat), el('span', 'mut', ' · ' + list.length + (list.length === 1 ? ' Schicht' : ' Schichten')));
+    const r = el('span', 'ecats'); sumFn(list).forEach(n => r.append(n)); sm.append(r); d.append(sm);
+    list.forEach(x => d.append(rowFn(x, true)));
+    f.append(d);
+  });
 }
 function einsPlan(e) {
   const f = document.createDocumentFragment(), y = e.date.slice(0, 4);
@@ -1826,9 +1842,11 @@ function einsPlan(e) {
   if (!plan) { f.append(el('p', 'mut', 'Der Vorschlag füllt zuerst die knappsten Schichten, verteilt gerecht (niemand doppelt, solange andere noch nichts haben), nimmt ⭐ vor ✓ und bevorzugt ' + (e.prefNeed === false ? '' : 'wer noch mehr Pflichtstunden braucht und dann ') + 'wer sich früher gemeldet hat.')); return f; }
   f.append(el('small', 'mut', e.planPub ? (dirty ? 'Geänderter Entwurf – Mitglieder sehen noch den veröffentlichten Plan.' : 'Veröffentlicht – die Mitglieder sehen diesen Plan.') : 'Entwurf – noch nicht für die Mitglieder sichtbar.'));
   const pr = m => { const mm = eMelds.find(x => x.uid === m); return mm; };
-  (e.shifts || []).forEach(s => {
-    const r = el('div', 'eshift'), list = plan[s.id] || (plan[s.id] = []), need = +s.need || 0;
-    const top = el('div', 'eshtop'); top.append(el('b', null, (isTask(s) ? '🎂 ' : '') + shLabel(s)), el('span', list.length >= need ? 'okTxt' : 'warnTxt', list.length + ' / ' + need));
+  const W = planWarn(e, plan);
+  (e.shifts || []).forEach(s => { if (!plan[s.id]) plan[s.id] = []; });
+  catSections(e, 'plan', f, (s, inCat) => {
+    const r = el('div', 'eshift'), list = plan[s.id], need = +s.need || 0;
+    const top = el('div', 'eshtop'); top.append(el('b', null, inCat ? shTime(s) : (isTask(s) ? '🎂 ' : '') + shLabel(s)), el('span', list.length >= need ? 'okTxt' : 'warnTxt', list.length + ' / ' + need));
     r.append(top);
     const chips = el('div', 'chips');
     list.forEach(uid => {
@@ -1848,9 +1866,14 @@ function einsPlan(e) {
       const i = await ask(isTask(s) ? 'Wer übernimmt „' + shLabel(s) + '“?' : 'Wer soll in ' + shLabel(s) + '?', opts.map(o => o.t).concat(['Abbrechen']));
       if (i < opts.length) { PD[e.id] = plan; list.push(opts[i].uid); renderEins(); }
     };
-    chips.append(add); r.append(chips); f.append(r);
+    chips.append(add); r.append(chips);
+    W.filter(w => w.s === s).forEach(w => r.append(el('div', 'ewarn', w.t)));
+    return r;
+  }, list => {
+    const n = list.reduce((a, x) => a + plan[x.id].length, 0), need = list.reduce((a, x) => a + (+x.need || 0), 0);
+    return [el('span', n >= need ? 'okTxt' : 'warnTxt', (n >= need ? '' : '⚠ ') + n + ' / ' + need)];
   });
-  planWarn(e, plan).forEach(w => f.append(el('div', 'ewarn', w)));
+  W.filter(w => !w.s).forEach(w => f.append(el('div', 'ewarn', w.t)));
   const row = el('div', 'ok-btns');
   const save = el('button', 'btn sec', 'Entwurf speichern'); save.disabled = !dirty;
   save.onclick = () => { einsSavePlan(e, plan, !!e.planPub); };
@@ -1880,8 +1903,8 @@ function einsAbr(e) {
   const A = AD[e.id] || (AD[e.id] = {}), att = e.att || {};
   const ownBlock = uid => uid === S.user.uid && !S.isSuper;
   let todo = 0;
-  (e.shifts || []).forEach(s => {
-    const r = el('div', 'eshift'); r.append(el('b', null, (isTask(s) ? '🎂 ' : '') + shLabel(s)));
+  catSections(e, 'abr', f, (s, inCat) => {
+    const r = el('div', 'eshift'); r.append(el('b', null, inCat ? shTime(s) : (isTask(s) ? '🎂 ' : '') + shLabel(s)));
     (e.plan[s.id] || []).forEach(uid => {
       const k = s.id + '|' + uid, line = el('div', 'abr');
       if (att[k] != null) { line.append(el('span', null, uName(uid)), el('span', 'okTxt', '✓ ' + nf(att[k]) + ' h gutgeschrieben')); r.append(line); return; }
@@ -1895,7 +1918,10 @@ function einsAbr(e) {
       else if (d.on) todo++;
       r.append(line);
     });
-    f.append(r);
+    return r;
+  }, list => {
+    const all = list.reduce((a, x) => a + (e.plan[x.id] || []).length, 0), ok = list.reduce((a, x) => a + (e.plan[x.id] || []).filter(u => att[x.id + '|' + u] != null).length, 0);
+    return [el('span', ok >= all ? 'okTxt' : 'mut', ok >= all ? '✓ abgerechnet' : ok + ' von ' + all + ' gutgeschrieben')];
   });
   const add = el('button', 'btn sec', '+ Weitere Person, die geholfen hat'); add.onclick = () => { eSub = 'plan'; toast('Im Plan hinzufügen, dann hier abrechnen.'); renderEins(); };
   const go = el('button', 'btn', todo ? '✓ ' + todo + ' Gutschriften erstellen' : 'Nichts mehr gutzuschreiben'); go.disabled = !todo;
