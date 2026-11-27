@@ -384,7 +384,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.11.0';
+const APP_VERSION = '1.11.1';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -2012,6 +2012,7 @@ function einsAbr(e) {
   let todo = 0;
   catSections(e, 'abr', f, (s, inCat) => {
     const r = el('div', 'eshift'); r.append(el('b', null, inCat ? shTime(s) : (isTask(s) ? '🎂 ' : '') + shLabel(s)));
+    if (!(e.plan[s.id] || []).length) r.append(el('div', 'mut', 'Niemand eingeteilt – im Plan hinzufügen, wer geholfen hat.'));
     (e.plan[s.id] || []).forEach(uid => {
       const k = s.id + '|' + uid, line = el('div', 'abr');
       if (att[k] != null) { line.append(el('span', null, uName(uid)), el('span', 'okTxt', '✓ ' + nf(att[k]) + ' h gutgeschrieben')); r.append(line); return; }
@@ -2029,6 +2030,7 @@ function einsAbr(e) {
     return r;
   }, list => {
     const all = list.reduce((a, x) => a + (e.plan[x.id] || []).length, 0), ok = list.reduce((a, x) => a + (e.plan[x.id] || []).filter(u => att[x.id + '|' + u] != null).length, 0);
+    if (!all) return [el('span', 'mut', 'niemand eingeteilt')];
     return [el('span', ok >= all ? 'okTxt' : 'mut', ok >= all ? '✓ abgerechnet' : ok + ' von ' + all + ' gutgeschrieben')];
   });
   const add = el('button', 'btn sec', '+ Weitere Person, die geholfen hat'); add.onclick = () => { eSub = 'plan'; toast('Im Plan hinzufügen, dann hier abrechnen.'); renderEins(); };
