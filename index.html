@@ -119,7 +119,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 .ewarn{font-size:.82rem;background:var(--wy2);border-radius:8px;padding:6px 8px;margin-top:6px}
 .abr{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.abr .chk{flex:1}.hin{width:70px;min-height:38px;padding:6px 8px}
 .eshform{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px}.eshform>input{margin-top:6px}
-.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric],.eshrow input[inputmode=decimal]{width:54px;flex:none}.eshrow input.ttl{flex:1;min-width:0}.eshform.task{border-style:dashed}.ecatbox .eshform{border:none;border-top:1px solid var(--line);border-radius:0;padding:8px 0 4px;margin-top:6px}.ecatbox .eshrow{gap:4px}.ecatbox{border:1px solid var(--line);border-radius:12px;padding:6px 8px;margin-top:10px;background:rgba(127,127,127,.04)}.ecatbox .ecatin{font-weight:700}.eh3.ecat{margin:14px 0 2px}details.ecatd{border-top:1px solid var(--line);margin-top:4px}details.ecatd>summary{display:flex;align-items:center;gap:6px;padding:12px 0;cursor:pointer;list-style:none;font-size:1.05rem}details.ecatd>summary::-webkit-details-marker{display:none}details.ecatd>summary::before{content:'▸';display:inline-block;transition:transform .15s;color:var(--mut,#888)}details.ecatd[open]>summary::before{transform:rotate(90deg)}.ecats{margin-left:auto;font-weight:700}details.ecatd>.eshift{margin-left:14px}.eshrow .grow{flex:1}
+.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric],.eshrow input[inputmode=decimal]{width:54px;flex:none}.eshrow input.ttl{flex:1;min-width:0}.eshform.task{border-style:dashed}.ecatbox .eshform{border:none;border-top:1px solid var(--line);border-radius:0;padding:8px 0 4px;margin-top:6px}.ecatbox .eshrow{gap:4px}.ecatbox{border:1px solid var(--line);border-radius:12px;padding:6px 8px;margin-top:10px;background:rgba(127,127,127,.04)}.ecatbox .ecatin{font-weight:700}.eh3.ecat{margin:14px 0 2px}details.ecatd{border-top:1px solid var(--line);margin-top:4px}details.ecatd>summary{display:flex;align-items:center;gap:6px;padding:12px 0;cursor:pointer;list-style:none;font-size:1.05rem}details.ecatd>summary::-webkit-details-marker{display:none}details.ecatd>summary::before{content:'▸';display:inline-block;transition:transform .15s;color:var(--mut,#888)}details.ecatd[open]>summary::before{transform:rotate(90deg)}.ecats{margin-left:auto;font-weight:700}details.ecatd>.eshift{margin-left:14px}.enach{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--wy2)}details.eopen>summary{font-weight:700;cursor:pointer}details.eopen textarea{width:100%;min-height:110px;margin-top:6px}.eshrow .grow{flex:1}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 
 /* Stempeluhr */
@@ -384,7 +384,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.10.1';
+const APP_VERSION = '1.11.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -1068,6 +1068,7 @@ function renderMyStd() {
     m.open = r.id in remOpen ? remOpen[r.id] : !r.seen;
     m.append(el('summary', null, '🔔 Erinnerung vom ' + new Date(r.t).toLocaleDateString('de-DE') + (r.byName ? ' (' + r.byName + ')' : '')), el('p', 'pre', r.text));
     const markSeen = () => { if (!r.seen && !seenSent.has('r' + r.id)) { seenSent.add('r' + r.id); fire(F.updateDoc(F.doc(db, 'stdrem', r.id), { seen: true }), 'Erinnerung'); } };
+    if (r.eid && S.eins.some(x => x.id === r.eid)) { const g = el('button', 'btn', 'Zum Einsatz'); g.onclick = () => { markSeen(); S.einsSel = r.eid; eSub = 'anm'; setView('eins'); window.scrollTo(0, 0); }; m.append(g); }
     if (!r.seen) { const b = el('button', 'btn sec', 'Gelesen'); b.onclick = () => { setRemOpen(r.id, false); markSeen(); }; m.append(b); }
     m.addEventListener('toggle', () => { if (m.open === (r.id in remOpen ? remOpen[r.id] : !r.seen)) return; setRemOpen(r.id, m.open); if (!m.open) markSeen(); });
     box.append(m);
@@ -1530,7 +1531,14 @@ const eBoard = id => (S.boards[id] && S.boards[id].m) || {};
 const myMeld = id => S.myMelds.find(m => m.eid === id) || null;
 const myShift = e => e.planPub && e.plan ? (e.shifts || []).filter(s => (e.plan[s.id] || []).includes(S.user.uid)) : [];
 const openFor = (uid, y) => round2(Math.max(0, sollFor(uid, y) - istFor(uid, y)));
-const isDecl = m => !!m && !Object.keys(m.s || {}).length;   // Absage: Meldung ohne Schicht
+const isDecl = m => !!m && !Object.keys(m.s || {}).length && !Object.keys(m.nach || {}).length;   // Absage: Meldung ohne Schicht
+// Gäste (keine Mitglieder, z. B. Familie): einsaetze.guests = { 'g_…': { n: Name, uid: Mitglied, das die Stunden bekommt } }
+const isGuest = id => String(id).startsWith('g_');
+const guestOf = id => { for (const x of S.eins) { const g = (x.guests || {})[id]; if (g) return g; } return null; };
+const credUid = id => isGuest(id) ? ((guestOf(id) || {}).uid || '') : id;
+// Nachmelden: Plan veröffentlicht, Einsatz noch nicht vorbei und nicht abgerechnet
+const eLate = e => !!e.planPub && !e.done && !ePast(e);
+const shOpen = (e, s) => ((e.plan || {})[s.id] || []).length < (+s.need || 0);
 const eNeedsMe = e => eOpen(e) && !myMeld(e.id);
 
 function startEinsListeners() {
@@ -1558,7 +1566,8 @@ function syncMelds() {
     S.users = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
   }, err => console.warn('Mitglieder (Einsätze)', err));
 }
-const uName = uid => { const u = S.users.find(x => x.id === uid); if (u && u.name) return u.name; const m = eMelds.find(x => x.uid === uid); return m ? m.name : '?'; };
+const uName = uid => { if (isGuest(uid)) { const g = guestOf(uid); return g ? g.n + ' (Gast · ' + uName(g.uid) + ')' : 'Gast'; }
+  const u = S.users.find(x => x.id === uid); if (u && u.name) return u.name; const m = eMelds.find(x => x.uid === uid); return m ? m.name : '?'; };
 
 /* --- Startseite: Hinweis auf offene Einsätze --- */
 function renderEinsHint() {
@@ -1631,19 +1640,22 @@ function einsDetail(e) {
   const sc = el('div', 'card'); sc.append(el('h2', null, open ? 'Wann kannst du?' : 'Schichten'));
   if (open && isDecl(mm)) { const n = el('div', 'card edecl'); n.style.margin = '6px 0'; n.append(el('b', null, '🙅 Du hast abgesagt.'), el('small', 'mut', ' Wenn du doch kannst: Schichten wählen und senden.')); sc.append(n); }
   if (open && realSh(e).length) sc.append(el('small', 'mut', 'Pro Schicht: ⭐ am liebsten · ✓ geht auch · ✗ geht nicht.'));
-  const B = eBoard(e.id); let lastCat = null;
-  (e.shifts || []).forEach(s => {
-    const r = el('div', 'eshift'), top = el('div', 'eshtop'), T = isTask(s), cat = T ? '' : (s.cat || '');
-    if (!T && eCats(e).length && cat !== lastCat) sc.append(el('h3', 'eh3 ecat', cat || 'Weitere Schichten'));
-    lastCat = T ? null : cat;
-    top.append(el('b', null, T ? '🎂 ' + shLabel(s) : (eCats(e).length ? shTime(s) : shLabel(s))), el('span', 'mut', nf(shHours(s)) + ' h' + (T ? ' je Person · ' + (+s.need || 0) + ' gesucht' : ' · ' + (+s.need || 0) + ' Pers.')));
+  const B = eBoard(e.id), late = eLate(e), uid0 = S.user.uid;
+  if (late && (e.shifts || []).some(s => shOpen(e, s))) {
+    const n = el('div', 'card ewarn'); n.style.margin = '6px 0';
+    n.append(el('b', null, '🙋 Es sind noch Schichten offen.'), el('small', null, ' Wenn du einspringen kannst, tippe bei der Schicht auf „Ich kann einspringen“ – die Planer tragen dich dann ein.'));
+    sc.append(n);
+  }
+  catSections(e, 'anm', sc, (s, inCat) => {
+    const r = el('div', 'eshift'), top = el('div', 'eshtop'), T = isTask(s);
+    top.append(el('b', null, T ? '🎂 ' + shLabel(s) : (inCat ? shTime(s) : shLabel(s))), el('span', 'mut', nf(shHours(s)) + ' h' + (T ? ' je Person · ' + (+s.need || 0) + ' gesucht' : ' · ' + (+s.need || 0) + ' Pers.')));
     r.append(top); if (s.note) r.append(el('small', 'mut', s.note));
     const w = Object.values(B).filter(x => x.s && x.s[s.id] === 'w'), a = Object.values(B).filter(x => x.s && x.s[s.id] === 'a');
     let occ;
     if (e.planPub) { const n = (e.plan[s.id] || []).length; occ = 'eingeteilt: ' + n + ' von ' + (+s.need || 0); if (e.showNames && e.planNames) occ += ' – ' + (e.plan[s.id] || []).map(u => e.planNames[u] || '?').join(', '); }
     else if (T) { occ = 'zugesagt: ' + w.concat(a).length + ' von ' + (+s.need || 0); if (e.showNames) { const nn = w.concat(a).map(x => x.n).filter(Boolean); if (nn.length) occ += ' – ' + nn.join(', '); } }
     else { occ = 'gemeldet: ⭐ ' + w.length + ' · ✓ ' + a.length + ' (gesucht ' + (+s.need || 0) + ')'; if (e.showNames) { const nn = w.concat(a).map(x => x.n).filter(Boolean); if (nn.length) occ += ' – ' + nn.join(', '); } }
-    r.append(el('small', 'eocc', occ));
+    r.append(el('small', 'eocc' + (e.planPub && shOpen(e, s) ? ' warnTxt' : ''), occ));
     if (open) {
       const seg = el('div', 'seg'), cur = d.s[s.id] || '';
       (T ? [['w', '🎂 Mache ich'], ['', '✗ Nein']] : [['w', '⭐ Wunsch'], ['a', '✓ Geht auch'], ['', '✗ Nein']]).forEach(([k, t]) => {
@@ -1651,9 +1663,23 @@ function einsDetail(e) {
         b.onclick = () => { if (k) d.s[s.id] = k; else delete d.s[s.id]; renderEins(); }; seg.append(b);
       });
       r.append(seg);
-    } else if (mm && mm.s && mm.s[s.id]) r.append(el('small', 'eocc', 'Deine Angabe: ' + (T ? '🎂 mache ich' : mm.s[s.id] === 'w' ? '⭐ Wunsch' : '✓ geht auch')));
-    sc.append(r);
-  });
+    } else {
+      if (mm && mm.s && mm.s[s.id]) r.append(el('small', 'eocc', 'Deine Angabe: ' + (T ? '🎂 mache ich' : mm.s[s.id] === 'w' ? '⭐ Wunsch' : '✓ geht auch')));
+      const inIt = ((e.plan || {})[s.id] || []).includes(uid0);
+      if (late && !inIt && (shOpen(e, s) || (mm && (mm.nach || {})[s.id]))) {
+        const on = !!(mm && (mm.nach || {})[s.id]);
+        if (on) r.append(el('small', 'eocc okTxt', '🙋 Du hast dich nachgemeldet – die Planer tragen dich ein.'));
+        const b = el('button', on ? 'btn sec' : 'btn', on ? 'Nachmeldung zurückziehen' : '🙋 Ich kann einspringen');
+        b.onclick = () => einsLate(e, s, !on); r.append(b);
+      }
+    }
+    return r;
+  }, list => {
+    if (open) { const w = list.filter(x => d.s[x.id] === 'w').length, a = list.filter(x => d.s[x.id] === 'a').length; return [el('span', w + a ? 'okTxt' : 'mut', w + a ? (w ? '⭐ ' + w : '') + (w && a ? ' · ' : '') + (a ? '✓ ' + a : '') : 'noch nichts gewählt')]; }
+    if (e.planPub) { const n = list.reduce((x, y) => x + ((e.plan || {})[y.id] || []).length, 0), need = list.reduce((x, y) => x + (+y.need || 0), 0), me = list.some(x => ((e.plan || {})[x.id] || []).includes(uid0));
+      return [el('span', me ? 'okTxt' : n < need ? 'warnTxt' : 'mut', (me ? '✅ du · ' : '') + (n < need ? (need - n) + ' offen' : 'voll'))]; }
+    return [];
+  }, list => open || list.some(x => ((e.plan || {})[x.id] || []).includes(uid0)));
   if (open) {
     const ns = realSh(e).length;
     const ml = el('label', null, 'Ich arbeite höchstens' + (taskSh(e).length ? ' (Schichten, ohne ' + taskSh(e).map(shLabel).join(', ') + ')' : '')), sel = el('select');
@@ -1702,6 +1728,14 @@ async function einsWithdraw(e) {
   b.delete(F.doc(db, 'einsatzMeld', e.id + '_' + uid));
   b.update(F.doc(db, 'einsatzBoard', e.id), { ['m.' + uid]: F.deleteField() });
   fire(b.commit(), 'Abmelden'); delete EF[e.id]; toast(decl ? 'Absage zurückgenommen.' : 'Abgemeldet.');
+}
+
+/* Nachmelden für offene Schichten nach Veröffentlichung des Plans – die Planer tragen ein */
+function einsLate(e, s, on) {
+  const uid = S.user.uid, mm = myMeld(e.id), now = Date.now(), ref = F.doc(db, 'einsatzMeld', e.id + '_' + uid);
+  if (mm) fire(F.updateDoc(ref, { ['nach.' + s.id]: on ? now : F.deleteField(), tu: now }), 'Nachmelden');
+  else if (on) fire(F.setDoc(ref, { eid: e.id, uid, name: myName().slice(0, 40), s: {}, max: 0, note: '', nach: { [s.id]: now }, t: now, tu: now }), 'Nachmelden');
+  toast(on ? 'Danke! Die Planer sehen deine Nachmeldung für ' + shLabel(s) + '.' : 'Nachmeldung zurückgezogen.');
 }
 
 /* --- Verwaltung eines Einsatzes --- */
@@ -1754,13 +1788,13 @@ function einsMatrix(e) {
     f.append(el('h3', 'eh3', 'Noch nicht gemeldet, brauchen aber Stunden (' + miss.length + ')'));
     if (!miss.length) f.append(el('small', 'mut', 'Niemand.'));
     miss.forEach(x => f.append(el('div', 'eline', x.u.name + ' – fehlen ' + nf(x.o) + ' h')));
-    if (miss.length && (S.isSuper || isStdAdm())) {
+    if (miss.length) {
       const b = el('button', 'btn sec', '🔔 Diese ' + miss.length + ' erinnern');
       b.onclick = async () => {
         const txt = await askText('Erinnerung an ' + miss.length + ' Mitglieder (erscheint in der App):', 'Hallo,\nfür „' + e.title + '“ am ' + wdate(e.date) + ' werden noch Helfer gesucht. Dir fehlen noch Pflichtstunden – melde dich gern im Reiter „Einsätze“ an (bis ' + dlText(e.dl) + ').');
         if (!txt) return;
         const bb = F.writeBatch(db), now = Date.now();
-        miss.forEach(x => bb.set(F.doc(F.collection(db, 'stdrem')), { uid: x.u.id, name: (x.u.name || '').slice(0, 40), year: +y, text: txt.slice(0, 1000), t: now, by: S.user.uid, byName: myName().slice(0, 40), seen: false }));
+        miss.forEach(x => bb.set(F.doc(F.collection(db, 'stdrem')), { uid: x.u.id, name: (x.u.name || '').slice(0, 40), year: +y, text: txt.slice(0, 1000), t: now, by: S.user.uid, byName: myName().slice(0, 40), seen: false, eid: e.id }));
         fire(bb.commit(), 'Erinnern'); toast(miss.length + ' Erinnerungen gesendet.');
       };
       f.append(b);
@@ -1814,14 +1848,14 @@ function planWarn(e, plan) {
 }
 /* Kategorien (z. B. Kasse, Verkauf) als aufklappbare Abschnitte; Aufklapp-Zustand bleibt beim Neuzeichnen erhalten */
 const CO = {};
-function catSections(e, tab, f, rowFn, sumFn) {
+function catSections(e, tab, f, rowFn, sumFn, defOpen) {
   if (!eCats(e).length) { (e.shifts || []).forEach(s => f.append(rowFn(s, false))); return; }
   const seen = new Set();
   (e.shifts || []).forEach(s => {
     if (isTask(s) || !s.cat) { f.append(rowFn(s, false)); return; }
     if (seen.has(s.cat)) return; seen.add(s.cat);
     const list = realSh(e).filter(x => x.cat === s.cat), key = e.id + '|' + tab + '|' + s.cat;
-    const d = el('details', 'ecatd'); d.open = !!CO[key]; d.ontoggle = () => { CO[key] = d.open; };
+    const d = el('details', 'ecatd'); d.open = key in CO ? CO[key] : !!(defOpen && defOpen(list)); d.ontoggle = () => { CO[key] = d.open; };
     const sm = el('summary'); sm.append(el('b', null, s.cat), el('span', 'mut', ' · ' + list.length + (list.length === 1 ? ' Schicht' : ' Schichten')));
     const r = el('span', 'ecats'); sumFn(list).forEach(n => r.append(n)); sm.append(r); d.append(sm);
     list.forEach(x => d.append(rowFn(x, true)));
@@ -1851,7 +1885,7 @@ function einsPlan(e) {
     const chips = el('div', 'chips');
     list.forEach(uid => {
       const m = pr(uid), v = m && (m.s || {})[s.id], c = el('span', 'chip');
-      c.append(el('span', null, (v && isTask(s) ? '🎂 ' : v === 'w' ? '⭐ ' : v === 'a' ? '✓ ' : '• ') + uName(uid) + (openFor(uid, y) > 0 ? ' · ' + nf(openFor(uid, y)) + ' h' : '')));
+      c.append(el('span', null, (isGuest(uid) ? '👪 ' : v && isTask(s) ? '🎂 ' : v === 'w' ? '⭐ ' : v === 'a' ? '✓ ' : (m && (m.nach || {})[s.id]) ? '🙋 ' : '• ') + uName(uid) + (!isGuest(uid) && openFor(uid, y) > 0 ? ' · ' + nf(openFor(uid, y)) + ' h' : '')));
       const x = el('button', null, '✕'); x.setAttribute('aria-label', 'Entfernen');
       x.onclick = () => { PD[e.id] = plan; list.splice(list.indexOf(uid), 1); renderEins(); };
       c.append(x); chips.append(c);
@@ -1861,12 +1895,20 @@ function einsPlan(e) {
       const inPlan = new Set(list), cand = eMelds.filter(m => !inPlan.has(m.uid));
       cand.sort((a, b) => ((a.s || {})[s.id] === 'w' ? 0 : (a.s || {})[s.id] === 'a' ? 1 : 2) - ((b.s || {})[s.id] === 'w' ? 0 : (b.s || {})[s.id] === 'a' ? 1 : 2));
       const others = S.users.filter(u => u.std === true && !u.blocked && !u.stdBlock && !u.deleted && !inPlan.has(u.id) && !eMelds.some(m => m.uid === u.id)).sort((a, b) => String(a.name).localeCompare(String(b.name), 'de'));
-      const opts = cand.map(m => ({ uid: m.uid, t: isDecl(m) ? '🙅 ' + m.name + ' (abgesagt)' : ((m.s || {})[s.id] && isTask(s) ? '🎂 ' : (m.s || {})[s.id] === 'w' ? '⭐ ' : (m.s || {})[s.id] === 'a' ? '✓ ' : '✗ ') + m.name })).concat(others.map(u => ({ uid: u.id, t: '○ ' + u.name + ' (nicht gemeldet)' })));
-      if (!opts.length) { toast('Keine weiteren Personen.'); return; }
+      cand.sort((a, b) => ((b.nach || {})[s.id] ? 1 : 0) - ((a.nach || {})[s.id] ? 1 : 0));
+      const opts = cand.map(m => ({ uid: m.uid, t: (m.nach || {})[s.id] ? '🙋 ' + m.name + ' (nachgemeldet)' : isDecl(m) ? '🙅 ' + m.name + ' (abgesagt)' : ((m.s || {})[s.id] && isTask(s) ? '🎂 ' : (m.s || {})[s.id] === 'w' ? '⭐ ' : (m.s || {})[s.id] === 'a' ? '✓ ' : '✗ ') + m.name })).concat(others.map(u => ({ uid: u.id, t: '○ ' + u.name + ' (nicht gemeldet)' })));
+      opts.push({ uid: '+guest', t: '👪 Gast eintragen (kein Mitglied) …' });
       const i = await ask(isTask(s) ? 'Wer übernimmt „' + shLabel(s) + '“?' : 'Wer soll in ' + shLabel(s) + '?', opts.map(o => o.t).concat(['Abbrechen']));
-      if (i < opts.length) { PD[e.id] = plan; list.push(opts[i].uid); renderEins(); }
+      if (i >= opts.length) return;
+      if (opts[i].uid === '+guest') { const g = await einsAddGuest(e); if (g) { PD[e.id] = plan; list.push(g); renderEins(); } return; }
+      PD[e.id] = plan; list.push(opts[i].uid); renderEins();
     };
     chips.append(add); r.append(chips);
+    eMelds.filter(m => (m.nach || {})[s.id] && !list.includes(m.uid)).forEach(m => {
+      const nb = el('div', 'enach'); nb.append(el('span', null, '🙋 ' + m.name + ' ist nachgemeldet'));
+      const go = el('button', 'chip add', '+ eintragen'); go.onclick = () => { PD[e.id] = plan; list.push(m.uid); renderEins(); };
+      nb.append(go); r.append(nb);
+    });
     W.filter(w => w.s === s).forEach(w => r.append(el('div', 'ewarn', w.t)));
     return r;
   }, list => {
@@ -1874,6 +1916,7 @@ function einsPlan(e) {
     return [el('span', n >= need ? 'okTxt' : 'warnTxt', (n >= need ? '' : '⚠ ') + n + ' / ' + need)];
   });
   W.filter(w => !w.s).forEach(w => f.append(el('div', 'ewarn', w.t)));
+  if (eLate(e) && !PD[e.id] && (e.shifts || []).some(s => shOpen(e, s))) f.append(einsOpenTools(e));
   const row = el('div', 'ok-btns');
   const save = el('button', 'btn sec', 'Entwurf speichern'); save.disabled = !dirty;
   save.onclick = () => { einsSavePlan(e, plan, !!e.planPub); };
@@ -1886,13 +1929,77 @@ function einsPlan(e) {
   if (e.planPub) { const un = el('button', 'btn sec', 'Veröffentlichung zurückziehen'); un.onclick = () => { fire(F.updateDoc(F.doc(db, 'einsaetze', e.id), { planPub: false, tu: Date.now() }), 'Plan'); toast('Plan ist wieder Entwurf.'); }; f.append(un); }
   return f;
 }
+/* Gast (kein Mitglied, z. B. Familie) – die Stunden bekommt das verknüpfte Mitglied */
+async function einsAddGuest(e) {
+  const n = await askIn('Name des Gasts (z. B. Familienangehörige)', 'Vor- und Nachname', '');
+  if (!n) return null;
+  const mem = S.users.filter(u => u.std === true && !u.blocked && !u.stdBlock && !u.deleted).sort((a, b) => String(a.name).localeCompare(String(b.name), 'de'));
+  if (!mem.length) { toast('Mitgliederliste noch nicht geladen.'); return null; }
+  const i = await ask('Wem werden die Stunden von „' + n + '“ gutgeschrieben?', mem.map(u => u.name).concat(['Abbrechen']));
+  if (i >= mem.length) return null;
+  const id = 'g_' + sid() + sid();
+  fire(F.updateDoc(F.doc(db, 'einsaetze', e.id), { ['guests.' + id]: { n: n.slice(0, 40), uid: mem[i].id }, tu: Date.now() }), 'Gast');
+  e.guests = Object.assign({}, e.guests, { [id]: { n: n.slice(0, 40), uid: mem[i].id } });
+  toast('Gast eingetragen – Stunden gehen an ' + mem[i].name + '.');
+  return id;
+}
+/* Offene Schichten nach Veröffentlichung: in der App erinnern und Text für WhatsApp */
+const ER = {};
+function einsOpenSh(e) { return (e.shifts || []).filter(s => shOpen(e, s)); }
+function einsOpenText(e) {
+  return 'Hallo zusammen,\nfür „' + e.title + '“ am ' + wdate(e.date).replace(/, /, ' ') + (e.place ? ' (' + e.place + ')' : '') + ' sind noch Schichten offen:\n' +
+    einsOpenSh(e).map(s => '• ' + (isTask(s) ? '🎂 ' : '') + shLabel(s) + ' – es fehlen ' + ((+s.need || 0) - ((e.plan || {})[s.id] || []).length) + (isTask(s) ? ' (zählt ' + nf(shHours(s)) + ' h)' : '')).join('\n') +
+    '\n\nWer einspringen kann: in WexStunden beim Einsatz auf „Ich kann einspringen“ tippen – wir tragen euch dann ein.\n' + EINS_URL + '?e=' + e.id;
+}
+function einsOpenTools(e) {
+  const box = el('details', 'card eopen'), key = e.id + '|open';
+  box.open = !!CO[key]; box.ontoggle = () => { CO[key] = box.open; };
+  const os = einsOpenSh(e), miss = os.reduce((a, s) => a + (+s.need || 0) - ((e.plan || {})[s.id] || []).length, 0);
+  box.append(el('summary', null, '📣 Offene Schichten bekanntmachen (' + miss + ' fehlen)'));
+  const wa = el('button', 'btn sec', '💬 Text für WhatsApp'); wa.onclick = () => einsShareText(einsOpenText(e)); box.append(wa);
+  // Empfänger: alle Freigegebenen, die nicht eingeteilt sind und nicht abgesagt haben
+  const used = new Set([].concat(...Object.values(e.plan || {})).map(credUid));
+  const decl = new Set(eMelds.filter(isDecl).map(m => m.uid));
+  const rec = S.users.filter(u => u.std === true && !u.blocked && !u.stdBlock && !u.deleted && !u.pending && !used.has(u.id) && !decl.has(u.id)).sort((a, b) => String(a.name).localeCompare(String(b.name), 'de'));
+  const st = ER[e.id] || (ER[e.id] = { off: {}, text: null });
+  if (st.text == null) st.text = 'Hallo,\nfür „' + e.title + '“ am ' + wdate(e.date) + ' sind noch Schichten offen:\n' + os.map(s => '• ' + shLabel(s)).join('\n') + '\nWenn du einspringen kannst, tippe im Reiter „Einsätze“ beim Einsatz auf „Ich kann einspringen“. Danke!';
+  box.append(el('h3', 'eh3', '🔔 In der App erinnern'));
+  if (!S.users.length) { box.append(el('small', 'mut', 'Mitgliederliste wird geladen …')); return box; }
+  box.append(el('small', 'mut', 'Alle Freigegebenen, die nicht eingeteilt sind und nicht abgesagt haben. Häkchen entfernen, wer keine Erinnerung bekommen soll.'));
+  const ta = el('textarea'); ta.maxLength = 1000; ta.value = st.text; ta.oninput = () => { st.text = ta.value; }; box.append(ta);
+  const all = el('div', 'ok-btns');
+  const a1 = el('button', 'btn sec', 'Alle'), a0 = el('button', 'btn sec', 'Keine');
+  a1.onclick = () => { st.off = {}; renderEins(); }; a0.onclick = () => { rec.forEach(u => { st.off[u.id] = true; }); renderEins(); };
+  all.append(a1, a0); box.append(all);
+  rec.forEach(u => {
+    const l = el('label', 'chk'), c = el('input'); c.type = 'checkbox'; c.checked = !st.off[u.id];
+    c.onchange = () => { if (c.checked) delete st.off[u.id]; else st.off[u.id] = true; renderEins(); };
+    const o = openFor(u.id, e.date.slice(0, 4));
+    l.append(c, el('span', null, u.name + (o > 0 ? ' · fehlen ' + nf(o) + ' h' : ''))); box.append(l);
+  });
+  const sel = rec.filter(u => !st.off[u.id]);
+  const go = el('button', 'btn', '🔔 ' + sel.length + (sel.length === 1 ? ' Mitglied' : ' Mitglieder') + ' erinnern'); go.disabled = !sel.length || !String(st.text || '').trim();
+  go.onclick = async () => {
+    if (await ask(sel.length + ' Mitglieder in der App erinnern?', ['Senden', 'Abbrechen']) !== 0) return;
+    const b = F.writeBatch(db), now = Date.now(), txt = String(st.text).trim().slice(0, 1000);
+    sel.forEach(u => b.set(F.doc(F.collection(db, 'stdrem')), { uid: u.id, name: (u.name || '').slice(0, 40), year: +e.date.slice(0, 4), text: txt, t: now, by: S.user.uid, byName: myName().slice(0, 40), seen: false, eid: e.id }));
+    delete ER[e.id]; fire(b.commit(), 'Erinnern'); renderEins(); toast(sel.length + ' Erinnerungen gesendet.');
+  };
+  box.append(go);
+  return box;
+}
+async function einsShareText(txt) {
+  if (navigator.share) { try { await navigator.share({ text: txt }); return; } catch (err) { if (err && err.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(txt); toast('Text kopiert – jetzt in WhatsApp einfügen.'); return; } catch (err) {}
+  askText('Text zum Kopieren:', txt);
+}
 function einsSavePlan(e, plan, pub) {
   const clean = {}; (e.shifts || []).forEach(s => { clean[s.id] = (plan[s.id] || []).slice(); });
   const upd = { plan: clean, planPub: !!pub, planAt: Date.now(), planBy: myName().slice(0, 40), tu: Date.now() };
   if (pub) upd.closed = true;
   if (e.showNames) { const pn = {}; [].concat(...Object.values(clean)).forEach(u => { pn[u] = uName(u); }); upd.planNames = pn; } else upd.planNames = F.deleteField();
-  fire(F.updateDoc(F.doc(db, 'einsaetze', e.id), upd), 'Plan speichern');
-  delete PD[e.id]; toast(pub ? 'Plan veröffentlicht.' : 'Entwurf gespeichert.');
+  delete PD[e.id];   // vor dem Schreiben: der lokale Snapshot kann sofort neu zeichnen
+  fire(F.updateDoc(F.doc(db, 'einsaetze', e.id), upd), 'Plan speichern'); renderEins(); toast(pub ? 'Plan veröffentlicht.' : 'Entwurf gespeichert.');
 }
 
 /* Abrechnung: tatsächliche Anwesenheit und Stunden, dann als genehmigte Einträge gutschreiben */
@@ -1901,7 +2008,7 @@ function einsAbr(e) {
   if (!e.plan) { f.append(el('p', 'mut', 'Zuerst einen Plan erstellen.')); return f; }
   if (!ePast(e) && e.date !== todayISO()) f.append(el('small', 'mut', 'Tipp: Abrechnen am oder nach dem Einsatztag.'));
   const A = AD[e.id] || (AD[e.id] = {}), att = e.att || {};
-  const ownBlock = uid => uid === S.user.uid && !S.isSuper;
+  const ownBlock = uid => credUid(uid) === S.user.uid && !S.isSuper;
   let todo = 0;
   catSections(e, 'abr', f, (s, inCat) => {
     const r = el('div', 'eshift'); r.append(el('b', null, inCat ? shTime(s) : (isTask(s) ? '🎂 ' : '') + shLabel(s)));
@@ -1914,6 +2021,7 @@ function einsAbr(e) {
       const hi = el('input', 'hin'); hi.inputMode = 'decimal'; hi.value = String(d.h).replace('.', ','); hi.disabled = !d.on;
       hi.oninput = () => { const v = parseFloat(hi.value.replace(',', '.')); d.h = v > 0 && v <= 24 ? round2(v) : d.h; };
       line.append(lb, hi, el('span', 'mut', 'h'));
+      if (isGuest(uid)) line.append(el('small', 'mut', ' → Stunden an ' + uName(credUid(uid))));
       if (ownBlock(uid)) line.append(el('small', 'mut', ' (eigene – ein anderer Planer schreibt gut)'));
       else if (d.on) todo++;
       r.append(line);
@@ -1932,13 +2040,15 @@ function einsAbr(e) {
     if (await ask(list.length + ' Gutschriften über zusammen ' + nf(sum) + ' h erstellen? Sie zählen sofort als genehmigt (mit deinem Namen vermerkt).', ['Gutschreiben', 'Abbrechen']) !== 0) return;
     const b = F.writeBatch(db), now = Date.now(), mark = { status: 'ok', okBy: S.user.uid, okByName: myName().slice(0, 40), okAt: now }, upd = { tu: now };
     list.forEach(x => {
-      b.set(F.doc(db, 'stunden', 'E_' + e.id + '_' + x.s.id + '_' + x.uid), Object.assign({ uid: x.uid, name: uName(x.uid).slice(0, 40), datum: e.date, taetigkeit: (e.title + ' ' + shLabel(x.s)).slice(0, 200), stunden: x.h, notiz: 'Einsatz', t: now, eins: e.id }, mark));
+      const cu = credUid(x.uid), g = isGuest(x.uid) ? guestOf(x.uid) : null;
+      if (!cu) return;
+      b.set(F.doc(db, 'stunden', 'E_' + e.id + '_' + x.s.id + '_' + x.uid), Object.assign({ uid: cu, name: uName(cu).slice(0, 40), datum: e.date, taetigkeit: (e.title + ' ' + shLabel(x.s) + (g ? ' – Gast: ' + g.n : '')).slice(0, 200), stunden: x.h, notiz: g ? 'Einsatz (Gast ' + g.n + ')' : 'Einsatz', t: now, eins: e.id }, mark));
       upd['att.' + x.k] = x.h;
     });
     const total = (e.shifts || []).reduce((a, s) => a + (e.plan[s.id] || []).length, 0);
     if (Object.keys(att).length + list.length >= total) upd.done = true;
     b.update(F.doc(db, 'einsaetze', e.id), upd);
-    fire(b.commit(), 'Gutschrift'); delete AD[e.id]; toast(list.length + ' Gutschriften erstellt.');
+    delete AD[e.id]; fire(b.commit(), 'Gutschrift'); renderEins(); toast(list.length + ' Gutschriften erstellt.');
   };
   f.append(add, go);
   if (e.done) f.append(el('p', 'okTxt', '✓ Einsatz abgeschlossen.'));
@@ -1988,9 +2098,7 @@ async function einsShare(e) {
     sh.map((s, i) => (eCats(e).length && (i === 0 || (sh[i - 1].cat || '') !== (s.cat || '')) ? (i ? '\n' : '') + (s.cat || 'Weitere') + ':\n' : '') + '• ' + s.from + ' - ' + s.to + ' Uhr' + (s.need ? ' (' + s.need + ' Pers.)' : '') + (s.note ? ' – ' + s.note : '')).join('\n') : '') +
     (tk.length ? '\n\nAußerdem gesucht:\n' + tk.map(s => '• 🎂 ' + shLabel(s) + (s.need ? ' (' + s.need + '×)' : '') + ' – zählt ' + nf(shHours(s)) + ' h' + (s.note ? ' – ' + s.note : '')).join('\n') : '') +
     '\n\nDie optimale Möglichkeit, euer Stundenkonto zu verbessern. Meldet euch bis ' + dlText(e.dl) + ' in WexStunden mit Wunsch- und Ausweichschicht:\n' + EINS_URL + '?e=' + e.id;
-  if (navigator.share) { try { await navigator.share({ text: txt }); return; } catch (err) { if (err && err.name === 'AbortError') return; } }
-  try { await navigator.clipboard.writeText(txt); toast('Text kopiert – jetzt in WhatsApp einfügen.'); return; } catch (err) {}
-  askText('Text zum Kopieren:', txt);
+  return einsShareText(txt);
 }
 function einsExcel(e) {
   if (!window.XLSX) { toast('Excel-Bibliothek konnte nicht geladen werden.'); return; }
@@ -2016,6 +2124,43 @@ function newEins() {
   return { title: '', date: iso, place: '', desc: '', dl: dl.getTime(), showNames: false, prefNeed: true,
     shifts: [{ id: sid(), from: '10:00', to: '12:30', need: 2, note: '' }, { id: sid(), from: '12:30', to: '15:00', need: 2, note: '' }, { id: sid(), from: '15:00', to: '17:30', need: 2, note: '' }] };
 }
+/* Bearbeitungszustand: Kategorien, Standard-Schichten (gelten für alle Kategorien) und je Kategorie eigene Zeiten */
+function formState(d) {
+  if (d.F) return d.F;
+  const real = (d.shifts || []).filter(s => !isTask(s)), tasks = (d.shifts || []).filter(isTask).map(x => Object.assign({}, x));
+  const cp = s => ({ from: s.from, to: s.to, need: +s.need || 0, note: s.note || '' });
+  const sig = l => l.map(x => x.from + '-' + x.to + '-' + (+x.need || 0) + '-' + (x.note || '')).join('|');
+  const names = [...new Set(real.map(s => s.cat || '').filter(Boolean))];
+  let std, cats = [];
+  if (!names.length) std = real.map(cp);
+  else {
+    // Standard = die Zeiten, die die meisten Kategorien gemeinsam haben
+    const lists = names.map(n => real.filter(s => s.cat === n).map(cp)), cnt = {};
+    lists.forEach(l => { cnt[sig(l)] = (cnt[sig(l)] || 0) + 1; });
+    std = lists.reduce((best, l) => cnt[sig(l)] > cnt[sig(best)] ? l : best, lists[0]).map(x => Object.assign({}, x));
+    cats = names.map((n, i) => ({ name: n, orig: n, own: sig(lists[i]) !== sig(std), sh: lists[i] }));
+    const loose = real.filter(s => !s.cat).map(cp);
+    if (loose.length) cats.push({ name: 'Weitere', orig: '', own: true, sh: loose });
+  }
+  if (!std.length) std = [{ from: '10:00', to: '12:30', need: 2, note: '' }];
+  return d.F = { cats, std, tasks };
+}
+// Formular → shifts; vorhandene Schicht-IDs bleiben erhalten (Meldungen und Plan hängen daran)
+function formShifts(d) {
+  const F0 = formState(d), old = (d.id && (S.eins.find(x => x.id === d.id) || {}).shifts) || [], used = new Set();
+  const pick = (orig, s, i) => {
+    if (orig == null) return sid();
+    const oc = old.filter(o => !isTask(o) && (o.cat || '') === orig);
+    const m = oc.find(o => !used.has(o.id) && o.from === s.from && o.to === s.to) || (oc[i] && !used.has(oc[i].id) ? oc[i] : null);
+    if (m) { used.add(m.id); return m.id; } return sid();
+  };
+  const mk = (s, cat, id) => Object.assign({ id, from: s.from, to: s.to, need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) }, cat ? { cat } : {});
+  let out = [];
+  if (!F0.cats.length) out = F0.std.map((s, i) => mk(s, '', pick('', s, i)));
+  else F0.cats.forEach(c => { const cat = String(c.name || '').trim().slice(0, 30) || 'Kategorie'; (c.own ? c.sh : F0.std).forEach((s, i) => out.push(mk(s, cat, pick(c.orig, s, i)))); });
+  F0.tasks.forEach(s => out.push({ id: s.id || sid(), kind: 'task', title: String(s.title || '').trim().slice(0, 40), h: round2(+s.h || 0), need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) }));
+  return out;
+}
 function einsForm() {
   const d = eEdit, card = el('div', 'card');
   card.append(el('h2', null, d.id ? 'Einsatz bearbeiten' : 'Neuer Einsatz'));
@@ -2032,47 +2177,63 @@ function einsForm() {
   c4.append(el('label', null, 'Uhrzeit')); const dt = el('input'); dt.type = 'time'; dt.value = pad(dlD.getHours()) + ':' + pad(dlD.getMinutes()); c4.append(dt);
   const setDl = () => { const t = new Date(dd.value + 'T' + (dt.value || '20:00')).getTime(); if (t) d.dl = t; }; dd.oninput = setDl; dt.oninput = setDl;
   r2.append(c3, c4); card.append(r2);
-  card.append(el('h3', 'eh3', 'Schichten'));
-  // Schichten nach Kategorie gruppiert (z. B. Kasse, Verkauf); _g hält die Gruppe beim Bearbeiten zusammen
-  const gKey = {}; let gN = 0;
-  d.shifts.forEach(s => { if (!isTask(s) && !s._g) { const c = s.cat || ''; s._g = gKey[c] || (gKey[c] = 'g' + (++gN) + '_' + sid()); } });
-  const groups = []; d.shifts.forEach(s => { if (!isTask(s) && !groups.includes(s._g)) groups.push(s._g); });
-  const shRow = (s, T) => {
-    const i = d.shifts.indexOf(s), r = el('div', 'eshform' + (T ? ' task' : ''));
-    const nn = el('input'); nn.inputMode = 'numeric'; nn.value = s.need; nn.title = T ? 'Anzahl' : 'Personen'; nn.oninput = () => { s.need = Math.max(0, Math.min(50, parseInt(nn.value, 10) || 0)); };
-    const x = el('button', 'ic', '🗑'); x.setAttribute('aria-label', T ? 'Aufgabe entfernen' : 'Schicht entfernen'); x.disabled = d.shifts.length < 2;
-    x.onclick = () => { d.shifts.splice(i, 1); renderEins(); };
-    const top = el('div', 'eshrow');
-    if (T) {
-      const ti = el('input', 'ttl'); ti.maxLength = 40; ti.value = s.title || ''; ti.placeholder = 'z. B. Kuchen backen'; ti.oninput = () => { s.title = ti.value; };
-      const hi = el('input'); hi.inputMode = 'decimal'; hi.value = String(s.h == null ? '' : s.h).replace('.', ','); hi.title = 'Stunden je Person';
-      hi.oninput = () => { const v = parseFloat(hi.value.replace(',', '.')); s.h = v > 0 && v <= 24 ? round2(v) : 0; };
-      const tr = el('div', 'eshrow'); tr.append(el('span', null, '🎂'), ti); r.append(tr);
-      top.append(el('span', 'mut', 'Std. je Person'), hi, el('span', 'mut', 'Anzahl'), nn, el('span', 'grow'), x); top.style.marginTop = '6px';
-    } else {
-      const tf = el('input'); tf.type = 'time'; tf.value = s.from; tf.oninput = () => { s.from = tf.value; };
-      const tt = el('input'); tt.type = 'time'; tt.value = s.to; tt.oninput = () => { s.to = tt.value; };
-      top.append(tf, el('span', null, '–'), tt, el('span', 'mut', '👤'), nn, x); nn.setAttribute('aria-label', 'Personen');
-    }
-    const no = el('input'); no.maxLength = 80; no.placeholder = T ? 'Hinweis, z. B. bis 10 Uhr am Stand abgeben' : 'Hinweis, z. B. inkl. Aufbau'; no.value = s.note || ''; no.oninput = () => { s.note = no.value; };
+  const F0 = formState(d), C = F0.cats;
+  // 1. Kategorien
+  card.append(el('h3', 'eh3', 'Kategorien (optional)'));
+  card.append(el('small', 'mut', 'z. B. Kasse, Verkauf. Ohne Kategorie gibt es nur eine Liste von Schichten.'));
+  C.forEach((c, i) => {
+    const r = el('div', 'eshrow'); r.style.marginTop = '6px';
+    const ci = el('input', 'ttl ecatin'); ci.maxLength = 30; ci.value = c.name; ci.placeholder = 'Kategorie, z. B. Kasse'; ci.oninput = () => { c.name = ci.value; };
+    const x = el('button', 'ic', '🗑'); x.setAttribute('aria-label', 'Kategorie entfernen'); x.onclick = () => { C.splice(i, 1); renderEins(); };
+    r.append(ci, x); card.append(r);
+  });
+  const addC = el('button', 'btn sec', '+ Kategorie'); addC.onclick = () => { C.push({ name: '', orig: null, own: false, sh: [] }); renderEins(); }; card.append(addC);
+  // 2. Standard-Schichten
+  const rowEd = (s, list) => {
+    const r = el('div', 'eshform');
+    const tf = el('input'); tf.type = 'time'; tf.value = s.from || ''; tf.oninput = () => { s.from = tf.value; };
+    const tt = el('input'); tt.type = 'time'; tt.value = s.to || ''; tt.oninput = () => { s.to = tt.value; };
+    const nn = el('input'); nn.inputMode = 'numeric'; nn.value = s.need; nn.setAttribute('aria-label', 'Personen'); nn.oninput = () => { s.need = Math.max(0, Math.min(50, parseInt(nn.value, 10) || 0)); };
+    const x = el('button', 'ic', '🗑'); x.setAttribute('aria-label', 'Schicht entfernen'); x.disabled = list.length < 2; x.onclick = () => { list.splice(list.indexOf(s), 1); renderEins(); };
+    const top = el('div', 'eshrow'); top.append(tf, el('span', null, '–'), tt, el('span', 'mut', '👤'), nn, x);
+    const no = el('input'); no.maxLength = 80; no.placeholder = 'Hinweis, z. B. inkl. Aufbau'; no.value = s.note || ''; no.oninput = () => { s.note = no.value; };
     r.append(top, no); return r;
   };
-  groups.forEach(g => {
-    const list = d.shifts.filter(s => s._g === g), box = el('div', 'ecatbox');
-    const ci = el('input', 'ecatin'); ci.maxLength = 30; ci.value = list[0].cat || ''; ci.placeholder = 'Kategorie (optional), z. B. Kasse';
-    ci.oninput = () => { d.shifts.forEach(s => { if (s._g === g) s.cat = ci.value; }); };
-    box.append(ci);
-    list.forEach(s => box.append(shRow(s, false)));
-    const ad = el('button', 'btn sec', '+ Zeit' + (list[0].cat ? ' für ' + list[0].cat : ''));
-    ad.onclick = () => { const l = list[list.length - 1]; d.shifts.splice(d.shifts.indexOf(l) + 1, 0, { id: sid(), _g: g, cat: l.cat || '', from: l.to || '10:00', to: '', need: l.need || 2, note: '' }); renderEins(); };
-    box.append(ad); card.append(box);
+  const addTo = (list, lbl) => { const b = el('button', 'btn sec', lbl); b.onclick = () => { const l = list[list.length - 1]; list.push({ from: l ? l.to : '10:00', to: '', need: l ? l.need : 2, note: '' }); renderEins(); }; return b; };
+  card.append(el('h3', 'eh3', C.length ? 'Schichten – gelten für alle Kategorien' : 'Schichten'));
+  F0.std.forEach(s => card.append(rowEd(s, F0.std)));
+  card.append(addTo(F0.std, '+ Schicht'));
+  // 3. Je Kategorie anpassen
+  if (C.length) {
+    card.append(el('h3', 'eh3', 'Je Kategorie anpassen'));
+    C.forEach((c, i) => {
+      const nm = c.name || 'Kategorie ' + (i + 1), dt = el('details', 'ecatbox'), key = 'form|' + i;
+      dt.open = key in CO ? CO[key] : c.own; dt.ontoggle = () => { CO[key] = dt.open; };
+      const sm = el('summary'); sm.append(el('b', null, nm), el('span', 'mut', c.own ? ' · eigene Zeiten (' + c.sh.length + ')' : ' · Standard')); dt.append(sm);
+      const l = el('label', 'chk'), cb = el('input'); cb.type = 'checkbox'; cb.checked = c.own;
+      cb.onchange = () => { c.own = cb.checked; if (c.own && !c.sh.length) c.sh = F0.std.map(x => ({ from: x.from, to: x.to, need: x.need, note: x.note || '' })); CO[key] = true; renderEins(); };
+      l.append(cb, el('span', null, 'Eigene Zeiten / Personen für ' + nm)); dt.append(l);
+      if (c.own) { c.sh.forEach(s => dt.append(rowEd(s, c.sh))); dt.append(addTo(c.sh, '+ Zeit für ' + nm)); }
+      else dt.append(el('small', 'mut', F0.std.map(x => (x.from || '?') + '–' + (x.to || '?') + ' (' + (+x.need || 0) + ' Pers.)').join(' · ')));
+      card.append(dt);
+    });
+  }
+  // 4. Aufgaben ohne Uhrzeit (Kuchen)
+  F0.tasks.forEach((s, i) => {
+    const r = el('div', 'eshform task');
+    const ti = el('input', 'ttl'); ti.maxLength = 40; ti.value = s.title || ''; ti.placeholder = 'z. B. Kuchen backen'; ti.oninput = () => { s.title = ti.value; };
+    const hi = el('input'); hi.inputMode = 'decimal'; hi.value = String(s.h == null ? '' : s.h).replace('.', ','); hi.title = 'Stunden je Person';
+    hi.oninput = () => { const v = parseFloat(hi.value.replace(',', '.')); s.h = v > 0 && v <= 24 ? round2(v) : 0; };
+    const nn = el('input'); nn.inputMode = 'numeric'; nn.value = s.need; nn.title = 'Anzahl'; nn.oninput = () => { s.need = Math.max(0, Math.min(50, parseInt(nn.value, 10) || 0)); };
+    const x = el('button', 'ic', '🗑'); x.setAttribute('aria-label', 'Aufgabe entfernen'); x.onclick = () => { F0.tasks.splice(i, 1); renderEins(); };
+    const tr = el('div', 'eshrow'); tr.append(el('span', null, '🎂'), ti); r.append(tr);
+    const top = el('div', 'eshrow'); top.style.marginTop = '6px'; top.append(el('span', 'mut', 'Std. je Person'), hi, el('span', 'mut', 'Anzahl'), nn, el('span', 'grow'), x);
+    const no = el('input'); no.maxLength = 80; no.placeholder = 'Hinweis, z. B. bis 10 Uhr am Stand abgeben'; no.value = s.note || ''; no.oninput = () => { s.note = no.value; };
+    r.append(top, no); card.append(r);
   });
-  d.shifts.filter(isTask).forEach(s => card.append(shRow(s, true)));
-  const add = el('button', 'btn sec', '+ Kategorie (z. B. Verkauf)');
-  add.onclick = () => { const f = d.shifts.find(x => !isTask(x)); d.shifts.push({ id: sid(), _g: 'g' + Date.now(), cat: '', from: f ? f.from : '10:00', to: f ? f.to : '', need: 2, note: '' }); renderEins(); };
-  const addT = el('button', 'btn sec', '+ 🎂 Kuchen / Aufgabe ohne Uhrzeit'); addT.onclick = () => { d.shifts.push({ id: sid(), kind: 'task', title: 'Kuchen backen', h: 2, need: 3, note: '' }); renderEins(); };
+  const addT = el('button', 'btn sec', '+ 🎂 Kuchen / Aufgabe ohne Uhrzeit'); addT.onclick = () => { F0.tasks.push({ kind: 'task', title: 'Kuchen backen', h: 2, need: 3, note: '' }); renderEins(); };
   card.append(el('small', 'mut', 'Aufgaben ohne Uhrzeit (z. B. Kuchen backen) zählen pro Person mit festen Stunden – nicht als Schicht und ohne Zeitkonflikt.'));
-  card.append(add, addT);
+  card.append(addT);
   const cb = (label, key) => { const l = el('label', 'chk'), c = el('input'); c.type = 'checkbox'; c.checked = !!d[key]; c.onchange = () => { d[key] = c.checked; }; l.append(c, el('span', null, label)); card.append(l); };
   cb('Mitglieder sehen die Namen der Gemeldeten (sonst nur die Anzahl)', 'showNames');
   const pn = el('label', 'chk'), pc = el('input'); pc.type = 'checkbox'; pc.checked = d.prefNeed !== false; pc.onchange = () => { d.prefNeed = pc.checked; };
@@ -2086,12 +2247,12 @@ function einsSave(d) {
   const title = String(d.title || '').trim();
   if (!title) { toast('Bitte einen Titel eingeben.'); return; }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) { toast('Bitte ein Datum wählen.'); return; }
-  const gOrd = []; d.shifts.forEach(s => { if (!isTask(s) && !gOrd.includes(s._g)) gOrd.push(s._g); });
-  const ord = d.shifts.filter(s => !isTask(s)).sort((a, b) => gOrd.indexOf(a._g) - gOrd.indexOf(b._g)).concat(d.shifts.filter(isTask));
-  const sh = ord.map(s => isTask(s)
-    ? { id: s.id || sid(), kind: 'task', title: String(s.title || '').trim().slice(0, 40), h: round2(+s.h || 0), need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) }
-    : Object.assign({ id: s.id || sid(), from: s.from, to: s.to, need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) }, String(s.cat || '').trim() ? { cat: String(s.cat).trim().slice(0, 30) } : {}));
+  const sh = formShifts(d);
+  const cn = formState(d).cats.map(c => String(c.name || '').trim());
+  if (cn.some(n => !n)) { toast('Bitte jeder Kategorie einen Namen geben.'); return; }
+  if (new Set(cn).size !== cn.length) { toast('Zwei Kategorien haben denselben Namen.'); return; }
   if (!sh.length) { toast('Bitte mindestens eine Schicht oder Aufgabe anlegen.'); return; }
+  if (sh.length > 60) { toast('Höchstens 60 Schichten und Aufgaben pro Einsatz.'); return; }
   if (sh.some(s => !isTask(s) && !shSpan(s))) { toast('Bitte bei jeder Schicht Beginn und Ende eintragen.'); return; }
   if (sh.some(s => isTask(s) && (!s.title || !(s.h > 0 && s.h <= 24)))) { toast('Bitte bei jeder Aufgabe Bezeichnung und Stunden (über 0 bis 24) eintragen.'); return; }
   if (!(d.dl > 0)) { toast('Bitte einen Anmeldeschluss eintragen.'); return; }
