@@ -119,7 +119,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 .ewarn{font-size:.82rem;background:var(--wy2);border-radius:8px;padding:6px 8px;margin-top:6px}
 .abr{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.abr .chk{flex:1}.hin{width:70px;min-height:38px;padding:6px 8px}
 .eshform{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px}.eshform>input{margin-top:6px}
-.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric],.eshrow input[inputmode=decimal]{width:54px;flex:none}.eshrow input.ttl{flex:1;min-width:0}.eshform.task{border-style:dashed}.eshrow .grow{flex:1}
+.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric],.eshrow input[inputmode=decimal]{width:54px;flex:none}.eshrow input.ttl{flex:1;min-width:0}.eshform.task{border-style:dashed}.ecatbox .eshform{border:none;border-top:1px solid var(--line);border-radius:0;padding:8px 0 4px;margin-top:6px}.ecatbox .eshrow{gap:4px}.ecatbox{border:1px solid var(--line);border-radius:12px;padding:6px 8px;margin-top:10px;background:rgba(127,127,127,.04)}.ecatbox .ecatin{font-weight:700}.eh3.ecat{margin:14px 0 2px}.eshrow .grow{flex:1}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 
 /* Stempeluhr */
@@ -384,7 +384,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.10.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -1492,7 +1492,7 @@ $('alSave').onclick = () => {
 };
 
 /* ---------- Einsätze / Schichtplanung ----------
-   einsaetze/{id}       = { title, date, place, desc, dl (Anmeldeschluss, ms), shifts: [{ id, from, to, need, note }],
+   einsaetze/{id}       = { title, date, place, desc, dl (Anmeldeschluss, ms), shifts: [{ id, cat? (Kategorie, z. B. Kasse), from, to, need, note }],
                             Aufgabe ohne Uhrzeit (z. B. Kuchen backen): { id, kind: 'task', title, h (Stunden je Person), need, note },
                             showNames, prefNeed, closed, plan: { sid: [uid] }, planPub, planNames: { uid: name } (nur bei showNames),
                             planAt, planBy, att: { 'sid|uid': Stunden }, done, by, byName, t, tu }
@@ -1512,8 +1512,10 @@ const realSh = e => (e.shifts || []).filter(s => !isTask(s));
 const taskSh = e => (e.shifts || []).filter(isTask);
 const shSpan = s => { if (isTask(s)) return null; const a = hm(s.from), b0 = hm(s.to); if (a == null || b0 == null) return null; const b = b0 <= a ? b0 + 1440 : b0; return { a, b }; };
 const shHours = s => { if (isTask(s)) return round2(+s.h || 0); const p = shSpan(s); return p ? round2((p.b - p.a) / 60) : 0; };
-const shLabel = s => isTask(s) ? (s.title || 'Kuchen backen') : s.from + '–' + s.to + ' Uhr';
-const shCol = s => isTask(s) ? (s.title || 'Kuchen') : s.from + '–' + s.to;
+const shTime = s => s.from + '–' + s.to + ' Uhr';
+const shLabel = s => isTask(s) ? (s.title || 'Kuchen backen') : (s.cat ? s.cat + ' ' : '') + shTime(s);
+const shCol = s => isTask(s) ? (s.title || 'Kuchen') : (s.cat ? s.cat + ' ' : '') + s.from + '–' + s.to;
+const eCats = e => [...new Set(realSh(e).map(s => s.cat || '').filter(Boolean))];
 const wdate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }); };
 const dlText = ms => new Date(ms).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' Uhr';
 const eOpen = e => !e.closed && !e.planPub && !e.done && Date.now() < (e.dl || 0);
@@ -1593,7 +1595,7 @@ function renderEins() {
 function einsCard(e) {
   const c = el('button', 'card ecard'), st = eState(e), b = eBoard(e.id), mine = myShift(e), mm = myMeld(e.id);
   const free = (e.shifts || []).reduce((s, x) => s + (+x.need || 0), 0), reg = Object.values(b).filter(x => x.s && Object.keys(x.s).length).length;
-  c.append(el('b', null, e.title), el('small', 'mut', wdate(e.date) + (e.place ? ' · ' + e.place : '') + ' · ' + realSh(e).length + ' Schichten' + (taskSh(e).length ? ' · 🎂 ' + taskSh(e).map(shLabel).join(', ') : '')));
+  c.append(el('b', null, e.title), el('small', 'mut', wdate(e.date) + (e.place ? ' · ' + e.place : '') + ' · ' + realSh(e).length + ' Schichten' + (eCats(e).length ? ' (' + eCats(e).join(', ') + ')' : '') + (taskSh(e).length ? ' · 🎂 ' + taskSh(e).map(shLabel).join(', ') : '')));
   const tags = el('div'); const tag = (t, cls) => tags.append(el('span', 'tag ' + (cls || ''), t));
   tag(st[0], st[1]);
   if (mine.length) tag('Du: ' + mine.map(shLabel).join(', '), 'ok');
@@ -1629,10 +1631,12 @@ function einsDetail(e) {
   const sc = el('div', 'card'); sc.append(el('h2', null, open ? 'Wann kannst du?' : 'Schichten'));
   if (open && isDecl(mm)) { const n = el('div', 'card edecl'); n.style.margin = '6px 0'; n.append(el('b', null, '🙅 Du hast abgesagt.'), el('small', 'mut', ' Wenn du doch kannst: Schichten wählen und senden.')); sc.append(n); }
   if (open && realSh(e).length) sc.append(el('small', 'mut', 'Pro Schicht: ⭐ am liebsten · ✓ geht auch · ✗ geht nicht.'));
-  const B = eBoard(e.id);
+  const B = eBoard(e.id); let lastCat = null;
   (e.shifts || []).forEach(s => {
-    const r = el('div', 'eshift'), top = el('div', 'eshtop'), T = isTask(s);
-    top.append(el('b', null, (T ? '🎂 ' : '') + shLabel(s)), el('span', 'mut', nf(shHours(s)) + ' h' + (T ? ' je Person · ' + (+s.need || 0) + ' gesucht' : ' · ' + (+s.need || 0) + ' Pers.')));
+    const r = el('div', 'eshift'), top = el('div', 'eshtop'), T = isTask(s), cat = T ? '' : (s.cat || '');
+    if (!T && eCats(e).length && cat !== lastCat) sc.append(el('h3', 'eh3 ecat', cat || 'Weitere Schichten'));
+    lastCat = T ? null : cat;
+    top.append(el('b', null, T ? '🎂 ' + shLabel(s) : (eCats(e).length ? shTime(s) : shLabel(s))), el('span', 'mut', nf(shHours(s)) + ' h' + (T ? ' je Person · ' + (+s.need || 0) + ' gesucht' : ' · ' + (+s.need || 0) + ' Pers.')));
     r.append(top); if (s.note) r.append(el('small', 'mut', s.note));
     const w = Object.values(B).filter(x => x.s && x.s[s.id] === 'w'), a = Object.values(B).filter(x => x.s && x.s[s.id] === 'a');
     let occ;
@@ -1955,7 +1959,7 @@ async function einsShare(e) {
   const sh = realSh(e), tk = taskSh(e), tot = sh.reduce((a, s) => a + (+s.need || 0), 0);
   const txt = 'Hallo zusammen,\n' + 'am ' + wdate(e.date).replace(/, /, ' ') + ' ' + (e.place ? 'findet „' + e.title + '“ (' + e.place + ') statt.' : 'findet „' + e.title + '“ statt.') +
     (e.desc ? '\n' + e.desc : '') + (sh.length ? '\n\nGeplant sind ' + sh.length + (sh.length === 1 ? ' Schicht' : ' Schichten') + ' (' + tot + ' Helfer):\n' +
-    sh.map(s => '• ' + s.from + ' - ' + s.to + ' Uhr' + (s.need ? ' (' + s.need + ' Pers.)' : '') + (s.note ? ' – ' + s.note : '')).join('\n') : '') +
+    sh.map((s, i) => (eCats(e).length && (i === 0 || (sh[i - 1].cat || '') !== (s.cat || '')) ? (i ? '\n' : '') + (s.cat || 'Weitere') + ':\n' : '') + '• ' + s.from + ' - ' + s.to + ' Uhr' + (s.need ? ' (' + s.need + ' Pers.)' : '') + (s.note ? ' – ' + s.note : '')).join('\n') : '') +
     (tk.length ? '\n\nAußerdem gesucht:\n' + tk.map(s => '• 🎂 ' + shLabel(s) + (s.need ? ' (' + s.need + '×)' : '') + ' – zählt ' + nf(shHours(s)) + ' h' + (s.note ? ' – ' + s.note : '')).join('\n') : '') +
     '\n\nDie optimale Möglichkeit, euer Stundenkonto zu verbessern. Meldet euch bis ' + dlText(e.dl) + ' in WexStunden mit Wunsch- und Ausweichschicht:\n' + EINS_URL + '?e=' + e.id;
   if (navigator.share) { try { await navigator.share({ text: txt }); return; } catch (err) { if (err && err.name === 'AbortError') return; } }
@@ -2003,8 +2007,12 @@ function einsForm() {
   const setDl = () => { const t = new Date(dd.value + 'T' + (dt.value || '20:00')).getTime(); if (t) d.dl = t; }; dd.oninput = setDl; dt.oninput = setDl;
   r2.append(c3, c4); card.append(r2);
   card.append(el('h3', 'eh3', 'Schichten'));
-  d.shifts.forEach((s, i) => {
-    const T = isTask(s), r = el('div', 'eshform' + (T ? ' task' : ''));
+  // Schichten nach Kategorie gruppiert (z. B. Kasse, Verkauf); _g hält die Gruppe beim Bearbeiten zusammen
+  const gKey = {}; let gN = 0;
+  d.shifts.forEach(s => { if (!isTask(s) && !s._g) { const c = s.cat || ''; s._g = gKey[c] || (gKey[c] = 'g' + (++gN) + '_' + sid()); } });
+  const groups = []; d.shifts.forEach(s => { if (!isTask(s) && !groups.includes(s._g)) groups.push(s._g); });
+  const shRow = (s, T) => {
+    const i = d.shifts.indexOf(s), r = el('div', 'eshform' + (T ? ' task' : ''));
     const nn = el('input'); nn.inputMode = 'numeric'; nn.value = s.need; nn.title = T ? 'Anzahl' : 'Personen'; nn.oninput = () => { s.need = Math.max(0, Math.min(50, parseInt(nn.value, 10) || 0)); };
     const x = el('button', 'ic', '🗑'); x.setAttribute('aria-label', T ? 'Aufgabe entfernen' : 'Schicht entfernen'); x.disabled = d.shifts.length < 2;
     x.onclick = () => { d.shifts.splice(i, 1); renderEins(); };
@@ -2018,12 +2026,24 @@ function einsForm() {
     } else {
       const tf = el('input'); tf.type = 'time'; tf.value = s.from; tf.oninput = () => { s.from = tf.value; };
       const tt = el('input'); tt.type = 'time'; tt.value = s.to; tt.oninput = () => { s.to = tt.value; };
-      top.append(tf, el('span', null, '–'), tt, el('span', 'mut', 'Pers.'), nn, x);
+      top.append(tf, el('span', null, '–'), tt, el('span', 'mut', '👤'), nn, x); nn.setAttribute('aria-label', 'Personen');
     }
     const no = el('input'); no.maxLength = 80; no.placeholder = T ? 'Hinweis, z. B. bis 10 Uhr am Stand abgeben' : 'Hinweis, z. B. inkl. Aufbau'; no.value = s.note || ''; no.oninput = () => { s.note = no.value; };
-    r.append(top, no); card.append(r);
+    r.append(top, no); return r;
+  };
+  groups.forEach(g => {
+    const list = d.shifts.filter(s => s._g === g), box = el('div', 'ecatbox');
+    const ci = el('input', 'ecatin'); ci.maxLength = 30; ci.value = list[0].cat || ''; ci.placeholder = 'Kategorie (optional), z. B. Kasse';
+    ci.oninput = () => { d.shifts.forEach(s => { if (s._g === g) s.cat = ci.value; }); };
+    box.append(ci);
+    list.forEach(s => box.append(shRow(s, false)));
+    const ad = el('button', 'btn sec', '+ Zeit' + (list[0].cat ? ' für ' + list[0].cat : ''));
+    ad.onclick = () => { const l = list[list.length - 1]; d.shifts.splice(d.shifts.indexOf(l) + 1, 0, { id: sid(), _g: g, cat: l.cat || '', from: l.to || '10:00', to: '', need: l.need || 2, note: '' }); renderEins(); };
+    box.append(ad); card.append(box);
   });
-  const add = el('button', 'btn sec', '+ Schicht'); add.onclick = () => { const l = d.shifts.filter(x => !isTask(x)).pop(); d.shifts.push({ id: sid(), from: l ? l.to : '10:00', to: '', need: 2, note: '' }); renderEins(); };
+  d.shifts.filter(isTask).forEach(s => card.append(shRow(s, true)));
+  const add = el('button', 'btn sec', '+ Kategorie (z. B. Verkauf)');
+  add.onclick = () => { const f = d.shifts.find(x => !isTask(x)); d.shifts.push({ id: sid(), _g: 'g' + Date.now(), cat: '', from: f ? f.from : '10:00', to: f ? f.to : '', need: 2, note: '' }); renderEins(); };
   const addT = el('button', 'btn sec', '+ 🎂 Kuchen / Aufgabe ohne Uhrzeit'); addT.onclick = () => { d.shifts.push({ id: sid(), kind: 'task', title: 'Kuchen backen', h: 2, need: 3, note: '' }); renderEins(); };
   card.append(el('small', 'mut', 'Aufgaben ohne Uhrzeit (z. B. Kuchen backen) zählen pro Person mit festen Stunden – nicht als Schicht und ohne Zeitkonflikt.'));
   card.append(add, addT);
@@ -2040,9 +2060,11 @@ function einsSave(d) {
   const title = String(d.title || '').trim();
   if (!title) { toast('Bitte einen Titel eingeben.'); return; }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) { toast('Bitte ein Datum wählen.'); return; }
-  const sh = d.shifts.map(s => isTask(s)
+  const gOrd = []; d.shifts.forEach(s => { if (!isTask(s) && !gOrd.includes(s._g)) gOrd.push(s._g); });
+  const ord = d.shifts.filter(s => !isTask(s)).sort((a, b) => gOrd.indexOf(a._g) - gOrd.indexOf(b._g)).concat(d.shifts.filter(isTask));
+  const sh = ord.map(s => isTask(s)
     ? { id: s.id || sid(), kind: 'task', title: String(s.title || '').trim().slice(0, 40), h: round2(+s.h || 0), need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) }
-    : { id: s.id || sid(), from: s.from, to: s.to, need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) });
+    : Object.assign({ id: s.id || sid(), from: s.from, to: s.to, need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) }, String(s.cat || '').trim() ? { cat: String(s.cat).trim().slice(0, 30) } : {}));
   if (!sh.length) { toast('Bitte mindestens eine Schicht oder Aufgabe anlegen.'); return; }
   if (sh.some(s => !isTask(s) && !shSpan(s))) { toast('Bitte bei jeder Schicht Beginn und Ende eintragen.'); return; }
   if (sh.some(s => isTask(s) && (!s.title || !(s.h > 0 && s.h <= 24)))) { toast('Bitte bei jeder Aufgabe Bezeichnung und Stunden (über 0 bis 24) eintragen.'); return; }
