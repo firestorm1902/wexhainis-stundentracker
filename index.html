@@ -94,6 +94,30 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 .alfields{flex:1;min-width:0}.alfields label:first-child{margin-top:0}
 .alrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.alrow .btn{margin:0;width:auto;flex:1 1 auto;min-height:38px;padding:6px 10px;font-size:.88rem}
 .alself{font-size:.75rem;color:var(--mu);margin-top:4px}
+/* Einsätze */
+.ehint{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;text-align:left;font:inherit;color:var(--ink);border-color:var(--wy);background:var(--wy2);cursor:pointer}
+.ehint.mine{border-color:var(--pet);background:var(--card)}
+.ecard{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;text-align:left;font:inherit;color:var(--ink);cursor:pointer}
+.ecard b{font:700 1.08rem Oswald,system-ui,sans-serif}
+.ebanner{border-color:var(--wy)}.ebanner.mine{border-color:var(--pet);box-shadow:inset 0 0 0 1px var(--pet)}
+.eshift{border-top:1px solid var(--line);padding:10px 0}.eshift:first-of-type{border-top:0}
+.eshtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.eocc{display:block;color:var(--mu);margin-top:2px}
+.seg{display:flex;gap:6px;margin-top:8px}.seg button{flex:1;min-height:42px;border:1px solid var(--line);border-radius:10px;background:transparent;font:inherit;font-size:.88rem;color:var(--ink)}
+.seg button.on.kw{background:var(--wy);border-color:var(--wy);color:#141414;font-weight:700}.seg button.on.ka{background:var(--wy2);border-color:var(--wy);font-weight:700}.seg button.on.kn{background:var(--line);font-weight:700}
+.eadm{border-color:var(--wy)}.eh3{font:700 .95rem Oswald,system-ui,sans-serif;margin:16px 0 6px}
+.mx{overflow-x:auto;margin:8px -4px}.mx table{border-collapse:collapse;font-size:.82rem;min-width:100%}
+.mx th,.mx td{border-bottom:1px solid var(--line);padding:6px 5px;text-align:left;vertical-align:top}.mx th{white-space:nowrap;color:var(--mu);font-weight:600}
+.mx td:first-child{min-width:120px}.mxc{text-align:center!important;white-space:nowrap}.mxc.w{background:var(--wy2)}.mxnote{color:var(--mu);font-size:.75rem;max-width:160px}.mxsum td{font-weight:700}
+.eline{font-size:.88rem;padding:2px 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:99px;padding:4px 6px 4px 10px;font-size:.85rem;background:var(--bg);color:var(--ink)}
+.chip button{border:0;background:transparent;color:var(--mu);font-size:.9rem;min-width:26px;min-height:26px}
+.chip.add{font:inherit;font-size:.85rem;padding:4px 12px;border-style:dashed;cursor:pointer}
+.ewarn{font-size:.82rem;background:var(--wy2);border-radius:8px;padding:6px 8px;margin-top:6px}
+.abr{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.abr .chk{flex:1}.hin{width:70px;min-height:38px;padding:6px 8px}
+.eshform{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px}.eshform>input{margin-top:6px}
+.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric]{width:54px;flex:none}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 
 /* Stempeluhr */
@@ -138,6 +162,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 <nav id="nav" hidden>
   <button data-v="new" class="on">Eintragen</button>
   <button data-v="list">Liste</button>
+  <button data-v="eins" id="neins" hidden>Einsätze</button>
   <button data-v="data">Daten</button>
   <button data-v="adm" id="nadm" hidden>Verwaltung</button>
 </nav>
@@ -183,6 +208,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
   </section>
 
   <section id="vNew" hidden>
+    <div id="einsHint"></div>
     <div id="myStd"></div>
     <div class="card clock" id="clock" data-state="idle">
       <h2>Stempeluhr</h2>
@@ -222,6 +248,8 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
     </div>
     <div id="list" style="margin-top:8px"></div>
   </section>
+
+  <section id="vEins" hidden></section>
 
   <section id="vData" hidden>
     <div class="card"><h2>Konto</h2><div id="who" class="mut"></div><button class="btn sec" id="lo">Abmelden</button></div>
@@ -354,7 +382,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -382,9 +410,9 @@ applyTheme();
 function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
 
 /* ---------- Zustand ---------- */
-const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], view: 'new', editId: null, registering: false, dbError: '' };
+const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], einsOk: null, eins: [], boards: {}, myMelds: [], einsSel: null, view: 'new', editId: null, registering: false, dbError: '' };
 let F = {}, db, auth, rowsKey = '';
-const unsub = { me: null, rows: null, users: null, cfg: null, soll: null, inv: null, rem: null, apps: null };
+const unsub = { me: null, rows: null, users: null, cfg: null, soll: null, inv: null, rem: null, apps: null, eins: null, boards: null, myMeld: null, melds: null, eusers: null };
 const DATA_L = ['rows', 'cfg', 'soll', 'inv', 'rem'];
 const stopL = k => { if (unsub[k]) { unsub[k](); unsub[k] = null; } };
 
@@ -493,7 +521,8 @@ async function initFirebase() {
     S.appLinks = snap.exists() ? snap.data() : null; renderAppLinks(); if (S.isSuper && S.view === 'adm' && admTab === 'cfg') renderAlEdit();
   }, err => console.warn('applinks', err));
   F.onAuthStateChanged(auth, async u => {
-    stopL('me'); stopL('users'); DATA_L.forEach(stopL); rowsKey = '';
+    stopL('me'); stopL('users'); DATA_L.forEach(stopL); stopEins(); rowsKey = '';
+    Object.assign(S, { einsOk: null, eins: [], boards: {}, myMelds: [], einsSel: null });
     Object.assign(S, { user: u, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], editId: null, dbError: '' });
     if (!u) { render(); return; }
     render();
@@ -515,7 +544,8 @@ function syncRows() {
   const key = access() === 'ok' ? (canAll() ? 'all' : 'mine') + ':' + S.user.uid : '';
   if (key === rowsKey) return;
   DATA_L.forEach(stopL); rowsKey = key; Object.assign(S, { rows: [], cfg: null, soll: [], inv: [], rem: [] });
-  if (!key) return;
+  if (!key) { stopEins(); return; }
+  stopEins(); startEinsListeners();
   // Mitglieder lesen nur eigene Dokumente, Vorstand und Admins alle
   const q = name => canAll() ? F.collection(db, name) : F.query(F.collection(db, name), F.where('uid', '==', S.user.uid));
   const docs = snap => snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
@@ -535,6 +565,7 @@ function syncUsers() {
 
 /* ---------- Anzeige ---------- */
 function setView(v) {
+  if (v === 'eins' && S.view !== 'eins') eEdit = null;
   if (v === 'new') ckClean();
   S.view = v; syncUsers(); render(); window.scrollTo(0, 0);
 }
@@ -556,7 +587,9 @@ function render() {
   $('vLoad').hidden = a !== 'load'; $('vAuth').hidden = a !== 'auth'; $('vGate').hidden = !GATE[a];
   $('nav').hidden = !ok; $('nadm').hidden = !(ok && canEditAll());
   if (S.view === 'adm' && !(ok && canEditAll())) { S.view = 'new'; syncUsers(); }
-  ['new', 'list', 'data', 'adm'].forEach(v => { $('v' + v[0].toUpperCase() + v.slice(1)).hidden = !(ok && S.view === v); });
+  if (S.view === 'eins' && !(ok && S.einsOk !== false)) S.view = 'new';
+  if (ok && pendingE && S.einsOk === true) { if (S.eins.some(x => x.id === pendingE)) { S.einsSel = pendingE; S.view = 'eins'; } pendingE = null; }
+  ['new', 'list', 'eins', 'data', 'adm'].forEach(v => { $('v' + v[0].toUpperCase() + v.slice(1)).hidden = !(ok && S.view === v); });
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
   $('err').hidden = !S.dbError; $('err').textContent = S.dbError;
   $('sum').hidden = !ok;
@@ -565,7 +598,9 @@ function render() {
     $('gProfile').hidden = a !== 'noprofile';
   }
   if (!ok) return;
-  renderList(); renderData(); renderMyStd(); if (S.view === 'adm') renderAdm();
+  const ne = $('neins'); ne.hidden = S.einsOk !== true; const nNeed = S.eins.filter(eNeedsMe).length; ne.replaceChildren('Einsätze'); if (nNeed) ne.append(el('span', 'badge', String(nNeed)));
+  syncMelds();
+  renderList(); renderData(); renderEinsHint(); renderMyStd(); if (S.view === 'adm') renderAdm(); if (S.view === 'eins') renderEins();
 }
 function yearsOf(rows) { const s = {}; rows.forEach(e => { s[e.datum.slice(0, 4)] = 1; }); return Object.keys(s).sort().reverse(); }
 function renderList() {
@@ -1453,6 +1488,534 @@ $('alSave').onclick = () => {
   fire(F.setDoc(F.doc(db, 'config', 'applinks'), v), 'Links speichern');
   toast('Gespeichert – gilt auch für die Getränke-Strichliste.'); alKey = ''; renderAppLinks(); renderAlEdit();
 };
+
+/* ---------- Einsätze / Schichtplanung ----------
+   einsaetze/{id}       = { title, date, place, desc, dl (Anmeldeschluss, ms), shifts: [{ id, from, to, need, note }],
+                            showNames, prefNeed, closed, plan: { sid: [uid] }, planPub, planNames: { uid: name } (nur bei showNames),
+                            planAt, planBy, att: { 'sid|uid': Stunden }, done, by, byName, t, tu }
+   einsatzBoard/{eid}   = { m: { uid: { s: { sid: 'w'|'a' }, n?: Name (nur bei showNames) } } }  – für alle lesbar (Zählung)
+   einsatzMeld/{eid_uid} = { eid, uid, name, s, max, note, t, tu }  – privat: das Mitglied selbst und die Einsatz-Verwaltung
+   Anlegen und planen: Super-Admin, Stunden-Admins und Vorstand. */
+const canEins = () => S.isSuper || isStdAdm() || isBoard();
+const EINS_URL = location.origin + location.pathname.replace(/index\.html$/, '');
+let pendingE = (() => { try { return new URLSearchParams(location.search).get('e'); } catch (e) { return null; } })();
+const EF = {};          // Entwürfe der Anmeldung je Einsatz
+const PD = {};          // Plan-Entwürfe je Einsatz (Verwaltung)
+const AD = {};          // Abrechnungs-Entwürfe je Einsatz
+let eSub = 'anm', eEdit = null, eMelds = [], eMeldsFor = null;
+const hm = s => { const m = /^(\d{1,2}):(\d{2})$/.exec(s || ''); return m ? +m[1] * 60 + +m[2] : null; };
+const shSpan = s => { const a = hm(s.from), b0 = hm(s.to); if (a == null || b0 == null) return null; const b = b0 <= a ? b0 + 1440 : b0; return { a, b }; };
+const shHours = s => { const p = shSpan(s); return p ? round2((p.b - p.a) / 60) : 0; };
+const shLabel = s => s.from + '–' + s.to + ' Uhr';
+const wdate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }); };
+const dlText = ms => new Date(ms).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' Uhr';
+const eOpen = e => !e.closed && !e.planPub && !e.done && Date.now() < (e.dl || 0);
+const ePast = e => e.date < todayISO();
+function eState(e) {
+  if (e.done) return ['Abgeschlossen', 'ok'];
+  if (e.planPub) return ['Plan steht', 'ok'];
+  if (eOpen(e)) return ['Anmeldung offen bis ' + dlText(e.dl), 'warn'];
+  return ['Anmeldung beendet – Plan folgt', ''];
+}
+const eBoard = id => (S.boards[id] && S.boards[id].m) || {};
+const myMeld = id => S.myMelds.find(m => m.eid === id) || null;
+const myShift = e => e.planPub && e.plan ? (e.shifts || []).filter(s => (e.plan[s.id] || []).includes(S.user.uid)) : [];
+const openFor = (uid, y) => round2(Math.max(0, sollFor(uid, y) - istFor(uid, y)));
+const eNeedsMe = e => eOpen(e) && !myMeld(e.id);
+
+function startEinsListeners() {
+  if (unsub.eins) return;
+  const deny = err => { if (err && err.code === 'permission-denied') { S.einsOk = false; stopEins(); render(); } else console.warn('Einsätze', err); };
+  unsub.eins = F.onSnapshot(F.collection(db, 'einsaetze'), snap => {
+    S.einsOk = true; S.eins = snap.docs.map(d => Object.assign({ id: d.id }, d.data())).sort((a, b) => a.date.localeCompare(b.date)); render();
+  }, deny);
+  unsub.boards = F.onSnapshot(F.collection(db, 'einsatzBoard'), snap => { S.boards = {}; snap.docs.forEach(d => { S.boards[d.id] = d.data(); }); render(); }, deny);
+  unsub.myMeld = F.onSnapshot(F.query(F.collection(db, 'einsatzMeld'), F.where('uid', '==', S.user.uid)), snap => {
+    S.myMelds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
+  }, deny);
+}
+function stopEins() { ['eins', 'boards', 'myMeld', 'melds', 'eusers'].forEach(stopL); eMeldsFor = null; }
+function syncMelds() {
+  const id = S.view === 'eins' && canEins() ? S.einsSel : null;
+  if (id === eMeldsFor) return;
+  stopL('melds'); eMeldsFor = id; eMelds = [];
+  if (!id) stopL('eusers');
+  if (id) unsub.melds = F.onSnapshot(F.query(F.collection(db, 'einsatzMeld'), F.where('eid', '==', id)), snap => {
+    eMelds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
+  }, err => console.warn('Meldungen', err));
+  // Mitgliederliste (Namen, wer noch Stunden braucht) – Admins laden sie in syncUsers, der Vorstand hier
+  if (id && !unsub.users && !unsub.eusers) unsub.eusers = F.onSnapshot(F.collection(db, 'users'), snap => {
+    S.users = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
+  }, err => console.warn('Mitglieder (Einsätze)', err));
+}
+const uName = uid => { const u = S.users.find(x => x.id === uid); if (u && u.name) return u.name; const m = eMelds.find(x => x.uid === uid); return m ? m.name : '?'; };
+
+/* --- Startseite: Hinweis auf offene Einsätze --- */
+function renderEinsHint() {
+  const box = $('einsHint'); box.replaceChildren();
+  if (S.einsOk !== true) return;
+  S.eins.filter(e => !ePast(e) && (eNeedsMe(e) || myShift(e).length)).slice(0, 3).forEach(e => {
+    const mine = myShift(e), c = el('button', 'card ehint' + (mine.length ? ' mine' : ''));
+    c.append(el('b', null, (mine.length ? '✅ Du bist eingeteilt: ' : '🙋 Helfer gesucht: ') + e.title),
+      el('small', 'mut', wdate(e.date) + (e.place ? ' · ' + e.place : '') + (mine.length ? ' · ' + mine.map(shLabel).join(', ') : ' · Anmeldung bis ' + dlText(e.dl))));
+    c.onclick = () => { S.einsSel = e.id; eSub = 'anm'; setView('eins'); };
+    box.append(c);
+  });
+}
+
+/* --- Reiter Einsätze --- */
+function renderEins() {
+  const v = $('vEins');
+  const ae = document.activeElement;
+  if (ae && v.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.type !== 'checkbox') return; // Tippen nicht unterbrechen
+  v.replaceChildren();
+  if (eEdit) { v.append(einsForm()); return; }
+  const e = S.einsSel && S.eins.find(x => x.id === S.einsSel);
+  if (S.einsSel && !e) S.einsSel = null;
+  if (e) { v.append(einsDetail(e)); return; }
+  if (canEins()) { const b = el('button', 'btn', '+ Neuer Einsatz'); b.onclick = () => { eEdit = newEins(); renderEins(); window.scrollTo(0, 0); }; v.append(b); }
+  const up = S.eins.filter(e => !ePast(e)), past = S.eins.filter(ePast).reverse();
+  if (!up.length) v.append(el('p', 'mut', 'Zurzeit sind keine Einsätze geplant.'));
+  up.forEach(e => v.append(einsCard(e)));
+  if (past.length) {
+    const d = el('details', 'card'); d.append(el('summary', null, 'Vergangene Einsätze (' + past.length + ')'));
+    past.forEach(e => d.append(einsCard(e))); v.append(d);
+  }
+}
+function einsCard(e) {
+  const c = el('button', 'card ecard'), st = eState(e), b = eBoard(e.id), mine = myShift(e), mm = myMeld(e.id);
+  const free = (e.shifts || []).reduce((s, x) => s + (+x.need || 0), 0), reg = Object.keys(b).length;
+  c.append(el('b', null, e.title), el('small', 'mut', wdate(e.date) + (e.place ? ' · ' + e.place : '') + ' · ' + (e.shifts || []).length + ' Schichten'));
+  const tags = el('div'); const tag = (t, cls) => tags.append(el('span', 'tag ' + (cls || ''), t));
+  tag(st[0], st[1]);
+  if (mine.length) tag('Du: ' + mine.map(shLabel).join(', '), 'ok');
+  else if (mm) tag(e.planPub ? 'Ersatz' : 'Du hast dich gemeldet', 'ok');
+  else if (eOpen(e)) tag('Noch nicht gemeldet', 'warn');
+  if (canEins()) tag(reg + ' Meldungen · ' + free + ' Plätze');
+  c.append(tags);
+  c.onclick = () => { S.einsSel = e.id; eSub = 'anm'; render(); window.scrollTo(0, 0); };
+  return c;
+}
+
+function einsDetail(e) {
+  const f = document.createDocumentFragment();
+  const back = el('button', 'btn sec', '← Alle Einsätze'); back.style.marginTop = '0';
+  back.onclick = () => { S.einsSel = null; render(); window.scrollTo(0, 0); }; f.append(back);
+  const st = eState(e), head = el('div', 'card');
+  head.append(el('h2', null, e.title), el('div', null, wdate(e.date) + (e.place ? ' · ' + e.place : '')));
+  if (e.desc) head.append(el('p', 'pre', e.desc));
+  head.append(el('span', 'tag ' + st[1], st[0]));
+  f.append(head);
+  const y = e.date.slice(0, 4), mm = myMeld(e.id), mine = myShift(e);
+  if (e.planPub) {
+    const b = el('div', 'card ebanner' + (mine.length ? ' mine' : ''));
+    if (mine.length) b.append(el('b', null, '✅ Du bist eingeteilt'), el('div', null, mine.map(s => shLabel(s) + (s.note ? ' (' + s.note + ')' : '')).join(' · ')));
+    else if (mm) b.append(el('b', null, 'Du bist diesmal nicht eingeteilt'), el('small', 'mut', 'Danke für deine Meldung – du stehst auf der Ersatzliste.'));
+    else b.append(el('b', null, 'Der Schichtplan steht.'));
+    f.append(b);
+  }
+  // Schichten mit Belegung und Auswahl
+  const open = eOpen(e), d = EF[e.id] || (EF[e.id] = mm ? { s: Object.assign({}, mm.s || {}), max: mm.max || 0, note: mm.note || '' } : { s: {}, max: 0, note: '' });
+  const sc = el('div', 'card'); sc.append(el('h2', null, open ? 'Wann kannst du?' : 'Schichten'));
+  if (open) sc.append(el('small', 'mut', 'Pro Schicht: ⭐ am liebsten · ✓ geht auch · ✗ geht nicht.'));
+  const B = eBoard(e.id);
+  (e.shifts || []).forEach(s => {
+    const r = el('div', 'eshift'), top = el('div', 'eshtop');
+    top.append(el('b', null, shLabel(s)), el('span', 'mut', nf(shHours(s)) + ' h · ' + (+s.need || 0) + ' Pers.'));
+    r.append(top); if (s.note) r.append(el('small', 'mut', s.note));
+    const w = Object.values(B).filter(x => x.s && x.s[s.id] === 'w'), a = Object.values(B).filter(x => x.s && x.s[s.id] === 'a');
+    let occ;
+    if (e.planPub) { const n = (e.plan[s.id] || []).length; occ = 'eingeteilt: ' + n + ' von ' + (+s.need || 0); if (e.showNames && e.planNames) occ += ' – ' + (e.plan[s.id] || []).map(u => e.planNames[u] || '?').join(', '); }
+    else { occ = 'gemeldet: ⭐ ' + w.length + ' · ✓ ' + a.length + ' (gesucht ' + (+s.need || 0) + ')'; if (e.showNames) { const nn = w.concat(a).map(x => x.n).filter(Boolean); if (nn.length) occ += ' – ' + nn.join(', '); } }
+    r.append(el('small', 'eocc', occ));
+    if (open) {
+      const seg = el('div', 'seg'), cur = d.s[s.id] || '';
+      [['w', '⭐ Wunsch'], ['a', '✓ Geht auch'], ['', '✗ Nein']].forEach(([k, t]) => {
+        const b = el('button', cur === k ? 'on k' + (k || 'n') : '', t);
+        b.onclick = () => { if (k) d.s[s.id] = k; else delete d.s[s.id]; renderEins(); }; seg.append(b);
+      });
+      r.append(seg);
+    } else if (mm && mm.s && mm.s[s.id]) r.append(el('small', 'eocc', 'Deine Angabe: ' + (mm.s[s.id] === 'w' ? '⭐ Wunsch' : '✓ geht auch')));
+    sc.append(r);
+  });
+  if (open) {
+    const ns = (e.shifts || []).length;
+    const ml = el('label', null, 'Ich arbeite höchstens'), sel = el('select');
+    [[0, 'so viele wie nötig']].concat(Array.from({ length: Math.min(ns, 5) }, (_, i) => [i + 1, (i + 1) + (i ? ' Schichten' : ' Schicht')])).forEach(([v, t]) => { const o = el('option', null, t); o.value = v; sel.append(o); });
+    sel.value = String(d.max || 0); sel.onchange = () => { d.max = +sel.value; };
+    const nl = el('label', null, 'Kommentar (optional, sehen nur die Planer)'), ni = el('input'); ni.maxLength = 300; ni.value = d.note || ''; ni.placeholder = 'z. B. kann erst ab 11 Uhr';
+    ni.oninput = () => { d.note = ni.value; };
+    sc.append(ml, sel, nl, ni);
+    const need = openFor(S.user.uid, y), h1 = (e.shifts || []).length ? shHours(e.shifts[0]) : 0;
+    if (need > 0) sc.append(el('p', 'okTxt', '💪 Dir fehlen in ' + y + ' noch ' + nf(need) + ' h – eine Schicht bringt ' + nf(h1) + ' h.'));
+    const send = el('button', 'btn', mm ? 'Änderung senden' : 'Anmeldung senden'); send.onclick = () => einsSend(e); sc.append(send);
+    if (mm) { const off = el('button', 'btn sec dng', 'Abmelden'); off.onclick = () => einsWithdraw(e); sc.append(off); }
+    sc.append(el('small', 'mut', 'Änderungen sind bis ' + dlText(e.dl) + ' möglich. Danach erstellen die Planer den Schichtplan.'));
+  }
+  f.append(sc);
+  if (canEins()) f.append(einsAdmin(e));
+  return f;
+}
+function einsSend(e) {
+  const d = EF[e.id], keys = Object.keys(d.s || {});
+  if (!keys.length) { toast('Bitte mindestens eine Schicht mit ⭐ oder ✓ wählen – oder „Abmelden“.'); return; }
+  const uid = S.user.uid, mm = myMeld(e.id), now = Date.now();
+  const meld = { eid: e.id, uid, name: myName().slice(0, 40), s: d.s, max: +d.max || 0, note: String(d.note || '').trim().slice(0, 300), t: mm ? (mm.t || now) : now, tu: now };
+  const entry = { s: d.s }; if (e.showNames) entry.n = meld.name;
+  const b = F.writeBatch(db);
+  b.set(F.doc(db, 'einsatzMeld', e.id + '_' + uid), meld);
+  b.update(F.doc(db, 'einsatzBoard', e.id), { ['m.' + uid]: entry });
+  fire(b.commit(), 'Anmeldung senden');
+  toast(mm ? 'Änderung gesendet.' : 'Danke! Deine Anmeldung ist eingegangen.');
+}
+async function einsWithdraw(e) {
+  if (await ask('Von „' + e.title + '“ abmelden?', ['Abmelden', 'Abbrechen']) !== 0) return;
+  const uid = S.user.uid, b = F.writeBatch(db);
+  b.delete(F.doc(db, 'einsatzMeld', e.id + '_' + uid));
+  b.update(F.doc(db, 'einsatzBoard', e.id), { ['m.' + uid]: F.deleteField() });
+  fire(b.commit(), 'Abmelden'); delete EF[e.id]; toast('Abgemeldet.');
+}
+
+/* --- Verwaltung eines Einsatzes --- */
+function einsAdmin(e) {
+  const box = el('div', 'card eadm');
+  box.append(el('h2', null, '🛠 Planung'));
+  const tabs = el('div', 'tabs');
+  [['anm', 'Meldungen'], ['plan', 'Plan'], ['abr', 'Abrechnung'], ['edit', 'Mehr']].forEach(([k, t]) => {
+    const b = el('button', eSub === k ? 'on' : '', t); b.onclick = () => { eSub = k; renderEins(); }; tabs.append(b);
+  });
+  box.append(tabs);
+  if (eSub === 'anm') box.append(einsMatrix(e));
+  else if (eSub === 'plan') box.append(einsPlan(e));
+  else if (eSub === 'abr') box.append(einsAbr(e));
+  else box.append(einsMore(e));
+  return box;
+}
+function einsMatrix(e) {
+  const f = document.createDocumentFragment(), y = e.date.slice(0, 4), sh = e.shifts || [];
+  const ms = eMelds.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
+  f.append(el('small', 'mut', ms.length + (ms.length === 1 ? ' Meldung' : ' Meldungen') + ' · sortiert nach Eingang'));
+  if (ms.length) {
+    const wrap = el('div', 'mx'), t = el('table'), hr = el('tr');
+    hr.append(el('th', null, 'Name'));
+    sh.forEach(s => { const th = el('th', null, s.from + '–' + s.to); hr.append(th); });
+    hr.append(el('th', null, 'fehlt'));
+    t.append(hr);
+    ms.forEach(m => {
+      const tr = el('tr'), td = el('td'); td.append(el('b', null, m.name || '?'));
+      if (m.max) td.append(el('small', 'mut', ' max. ' + m.max));
+      if (m.note) td.append(el('div', 'mxnote', m.note));
+      tr.append(td);
+      sh.forEach(s => { const v = (m.s || {})[s.id]; tr.append(el('td', 'mxc ' + (v || 'n'), v === 'w' ? '⭐' : v === 'a' ? '✓' : '·')); });
+      const o = openFor(m.uid, y); tr.append(el('td', o > 0 ? 'mxc warnTxt' : 'mxc okTxt', o > 0 ? nf(o) + ' h' : '✓'));
+      t.append(tr);
+    });
+    const sr = el('tr', 'mxsum'); sr.append(el('td', null, 'Summe ⭐/✓'));
+    sh.forEach(s => { const w = ms.filter(m => (m.s || {})[s.id] === 'w').length, a = ms.filter(m => (m.s || {})[s.id] === 'a').length, need = +s.need || 0; sr.append(el('td', 'mxc ' + (w + a >= need ? 'okTxt' : 'warnTxt'), w + '/' + a + ' von ' + need)); });
+    sr.append(el('td')); t.append(sr);
+    wrap.append(t); f.append(wrap);
+  }
+  // Wer braucht noch Stunden und hat sich nicht gemeldet?
+  const reg = new Set(ms.map(m => m.uid));
+  const miss = S.users.filter(u => u.std === true && !u.blocked && !u.stdBlock && !u.deleted && !reg.has(u.id)).map(u => ({ u, o: openFor(u.id, y) })).filter(x => x.o > 0).sort((a, b) => b.o - a.o);
+  if (S.users.length) {
+    f.append(el('h3', 'eh3', 'Noch nicht gemeldet, brauchen aber Stunden (' + miss.length + ')'));
+    if (!miss.length) f.append(el('small', 'mut', 'Niemand.'));
+    miss.forEach(x => f.append(el('div', 'eline', x.u.name + ' – fehlen ' + nf(x.o) + ' h')));
+    if (miss.length && (S.isSuper || isStdAdm())) {
+      const b = el('button', 'btn sec', '🔔 Diese ' + miss.length + ' erinnern');
+      b.onclick = async () => {
+        const txt = await askText('Erinnerung an ' + miss.length + ' Mitglieder (erscheint in der App):', 'Hallo,\nfür „' + e.title + '“ am ' + wdate(e.date) + ' werden noch Helfer gesucht. Dir fehlen noch Pflichtstunden – melde dich gern im Reiter „Einsätze“ an (bis ' + dlText(e.dl) + ').');
+        if (!txt) return;
+        const bb = F.writeBatch(db), now = Date.now();
+        miss.forEach(x => bb.set(F.doc(F.collection(db, 'stdrem')), { uid: x.u.id, name: (x.u.name || '').slice(0, 40), year: +y, text: txt.slice(0, 1000), t: now, by: S.user.uid, byName: myName().slice(0, 40), seen: false }));
+        fire(bb.commit(), 'Erinnern'); toast(miss.length + ' Erinnerungen gesendet.');
+      };
+      f.append(b);
+    }
+  }
+  const x = el('button', 'btn sec', '📊 Meldungen und Plan als Excel'); x.onclick = () => einsExcel(e); f.append(x);
+  return f;
+}
+
+/* Vorschlag: Schichten zuerst füllen (die knappsten zuerst), gerecht verteilen, Wunsch vor Ausweichen,
+   dann wer mehr Pflichtstunden offen hat, dann wer sich früher gemeldet hat. */
+function einsPropose(e) {
+  const y = e.date.slice(0, 4), sh = (e.shifts || []).map(s => Object.assign({}, s, { need: +s.need || 0, sp: shSpan(s) }));
+  const byId = {}; sh.forEach(s => { byId[s.id] = s; });
+  const P = eMelds.map(m => ({ uid: m.uid, s: m.s || {}, max: +m.max || 0, t: m.t || 0, open: openFor(m.uid, y), got: [] }));
+  const plan = {}; sh.forEach(s => { plan[s.id] = []; });
+  const clash = (p, s) => p.got.some(id => { const o = byId[id].sp; return o && s.sp && o.a < s.sp.b && s.sp.a < o.b; });
+  const can = (p, s) => !!p.s[s.id] && !plan[s.id].includes(p.uid) && (!p.max || p.got.length < p.max) && !clash(p, s);
+  const key = (p, s) => [p.got.length, p.s[s.id] === 'w' ? 0 : 1, e.prefNeed === false ? 0 : -p.open, p.t];
+  const less = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false; };
+  for (let guard = 0; guard < 500; guard++) {
+    let best = null;
+    sh.forEach(s => {
+      const rest = s.need - plan[s.id].length; if (rest <= 0) return;
+      const c = P.filter(p => can(p, s)); if (!c.length) return;
+      const slack = c.length - rest;
+      if (!best || slack < best.slack || (slack === best.slack && s.sp && best.s.sp && s.sp.a < best.s.sp.a)) best = { s, c, slack };
+    });
+    if (!best) break;
+    const p = best.c.reduce((a, b) => less(key(b, best.s), key(a, best.s)) ? b : a);
+    plan[best.s.id].push(p.uid); p.got.push(best.s.id);
+  }
+  return plan;
+}
+function planWarn(e, plan) {
+  const out = [], sh = e.shifts || [];
+  sh.forEach(s => {
+    const n = (plan[s.id] || []).length, need = +s.need || 0;
+    if (n < need) {
+      const could = eMelds.filter(m => (m.s || {})[s.id] && !(plan[s.id] || []).includes(m.uid)).map(m => m.name);
+      out.push('⚠ ' + shLabel(s) + ': es fehlen ' + (need - n) + (could.length ? ' – gemeldet, aber woanders eingeteilt oder am Limit: ' + could.join(', ') : ' – keine weiteren Meldungen'));
+    }
+  });
+  const used = new Set([].concat(...Object.values(plan)));
+  const res = eMelds.filter(m => !used.has(m.uid)).map(m => m.name);
+  if (res.length) out.push('Ersatz (gemeldet, nicht eingeteilt): ' + res.join(', '));
+  eMelds.forEach(m => { (sh.filter(s => (plan[s.id] || []).includes(m.uid) && !(m.s || {})[s.id])).forEach(s => out.push('ℹ ' + m.name + ' ist in ' + shLabel(s) + ' eingeteilt, hat dafür aber nichts angegeben.')); });
+  return out;
+}
+function einsPlan(e) {
+  const f = document.createDocumentFragment(), y = e.date.slice(0, 4);
+  const plan = PD[e.id] || (e.plan ? JSON.parse(JSON.stringify(e.plan)) : null);
+  const dirty = !!PD[e.id];
+  const pb = el('button', 'btn', plan ? '🔄 Neuen Vorschlag erstellen' : '✨ Vorschlag erstellen');
+  pb.onclick = async () => {
+    if (!eMelds.length) { toast('Noch keine Meldungen.'); return; }
+    if (plan && await ask('Den aktuellen Plan durch einen neuen Vorschlag ersetzen?', ['Ersetzen', 'Abbrechen']) !== 0) return;
+    PD[e.id] = einsPropose(e); renderEins();
+  };
+  f.append(pb);
+  if (!plan) { f.append(el('p', 'mut', 'Der Vorschlag füllt zuerst die knappsten Schichten, verteilt gerecht (niemand doppelt, solange andere noch nichts haben), nimmt ⭐ vor ✓ und bevorzugt ' + (e.prefNeed === false ? '' : 'wer noch mehr Pflichtstunden braucht und dann ') + 'wer sich früher gemeldet hat.')); return f; }
+  f.append(el('small', 'mut', e.planPub ? (dirty ? 'Geänderter Entwurf – Mitglieder sehen noch den veröffentlichten Plan.' : 'Veröffentlicht – die Mitglieder sehen diesen Plan.') : 'Entwurf – noch nicht für die Mitglieder sichtbar.'));
+  const pr = m => { const mm = eMelds.find(x => x.uid === m); return mm; };
+  (e.shifts || []).forEach(s => {
+    const r = el('div', 'eshift'), list = plan[s.id] || (plan[s.id] = []), need = +s.need || 0;
+    const top = el('div', 'eshtop'); top.append(el('b', null, shLabel(s)), el('span', list.length >= need ? 'okTxt' : 'warnTxt', list.length + ' / ' + need));
+    r.append(top);
+    const chips = el('div', 'chips');
+    list.forEach(uid => {
+      const m = pr(uid), v = m && (m.s || {})[s.id], c = el('span', 'chip');
+      c.append(el('span', null, (v === 'w' ? '⭐ ' : v === 'a' ? '✓ ' : '• ') + uName(uid) + (openFor(uid, y) > 0 ? ' · ' + nf(openFor(uid, y)) + ' h' : '')));
+      const x = el('button', null, '✕'); x.setAttribute('aria-label', 'Entfernen');
+      x.onclick = () => { PD[e.id] = plan; list.splice(list.indexOf(uid), 1); renderEins(); };
+      c.append(x); chips.append(c);
+    });
+    const add = el('button', 'chip add', '+ Person');
+    add.onclick = async () => {
+      const inPlan = new Set(list), cand = eMelds.filter(m => !inPlan.has(m.uid));
+      cand.sort((a, b) => ((a.s || {})[s.id] === 'w' ? 0 : (a.s || {})[s.id] === 'a' ? 1 : 2) - ((b.s || {})[s.id] === 'w' ? 0 : (b.s || {})[s.id] === 'a' ? 1 : 2));
+      const others = S.users.filter(u => u.std === true && !u.blocked && !u.stdBlock && !u.deleted && !inPlan.has(u.id) && !eMelds.some(m => m.uid === u.id)).sort((a, b) => String(a.name).localeCompare(String(b.name), 'de'));
+      const opts = cand.map(m => ({ uid: m.uid, t: ((m.s || {})[s.id] === 'w' ? '⭐ ' : (m.s || {})[s.id] === 'a' ? '✓ ' : '✗ ') + m.name })).concat(others.map(u => ({ uid: u.id, t: '○ ' + u.name + ' (nicht gemeldet)' })));
+      if (!opts.length) { toast('Keine weiteren Personen.'); return; }
+      const i = await ask('Wer soll in ' + shLabel(s) + '?', opts.map(o => o.t).concat(['Abbrechen']));
+      if (i < opts.length) { PD[e.id] = plan; list.push(opts[i].uid); renderEins(); }
+    };
+    chips.append(add); r.append(chips); f.append(r);
+  });
+  planWarn(e, plan).forEach(w => f.append(el('div', 'ewarn', w)));
+  const row = el('div', 'ok-btns');
+  const save = el('button', 'btn sec', 'Entwurf speichern'); save.disabled = !dirty;
+  save.onclick = () => { einsSavePlan(e, plan, !!e.planPub); };
+  const pub = el('button', 'btn', e.planPub ? (dirty ? 'Änderung veröffentlichen' : '✓ Veröffentlicht') : 'Plan veröffentlichen'); pub.disabled = e.planPub && !dirty;
+  pub.onclick = async () => {
+    if (await ask('Plan veröffentlichen? Die Mitglieder sehen dann ihre Einteilung, die Anmeldung wird geschlossen.', ['Veröffentlichen', 'Abbrechen']) !== 0) return;
+    einsSavePlan(e, plan, true);
+  };
+  row.append(save, pub); f.append(row);
+  if (e.planPub) { const un = el('button', 'btn sec', 'Veröffentlichung zurückziehen'); un.onclick = () => { fire(F.updateDoc(F.doc(db, 'einsaetze', e.id), { planPub: false, tu: Date.now() }), 'Plan'); toast('Plan ist wieder Entwurf.'); }; f.append(un); }
+  return f;
+}
+function einsSavePlan(e, plan, pub) {
+  const clean = {}; (e.shifts || []).forEach(s => { clean[s.id] = (plan[s.id] || []).slice(); });
+  const upd = { plan: clean, planPub: !!pub, planAt: Date.now(), planBy: myName().slice(0, 40), tu: Date.now() };
+  if (pub) upd.closed = true;
+  if (e.showNames) { const pn = {}; [].concat(...Object.values(clean)).forEach(u => { pn[u] = uName(u); }); upd.planNames = pn; } else upd.planNames = F.deleteField();
+  fire(F.updateDoc(F.doc(db, 'einsaetze', e.id), upd), 'Plan speichern');
+  delete PD[e.id]; toast(pub ? 'Plan veröffentlicht.' : 'Entwurf gespeichert.');
+}
+
+/* Abrechnung: tatsächliche Anwesenheit und Stunden, dann als genehmigte Einträge gutschreiben */
+function einsAbr(e) {
+  const f = document.createDocumentFragment();
+  if (!e.plan) { f.append(el('p', 'mut', 'Zuerst einen Plan erstellen.')); return f; }
+  if (!ePast(e) && e.date !== todayISO()) f.append(el('small', 'mut', 'Tipp: Abrechnen am oder nach dem Einsatztag.'));
+  const A = AD[e.id] || (AD[e.id] = {}), att = e.att || {};
+  const ownBlock = uid => uid === S.user.uid && !S.isSuper;
+  let todo = 0;
+  (e.shifts || []).forEach(s => {
+    const r = el('div', 'eshift'); r.append(el('b', null, shLabel(s)));
+    (e.plan[s.id] || []).forEach(uid => {
+      const k = s.id + '|' + uid, line = el('div', 'abr');
+      if (att[k] != null) { line.append(el('span', null, uName(uid)), el('span', 'okTxt', '✓ ' + nf(att[k]) + ' h gutgeschrieben')); r.append(line); return; }
+      const d = A[k] || (A[k] = { on: true, h: shHours(s) });
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = d.on; cb.onchange = () => { d.on = cb.checked; renderEins(); };
+      const lb = el('label', 'chk'); lb.style.margin = '0'; lb.append(cb, el('span', null, uName(uid)));
+      const hi = el('input', 'hin'); hi.inputMode = 'decimal'; hi.value = String(d.h).replace('.', ','); hi.disabled = !d.on;
+      hi.oninput = () => { const v = parseFloat(hi.value.replace(',', '.')); d.h = v > 0 && v <= 24 ? round2(v) : d.h; };
+      line.append(lb, hi, el('span', 'mut', 'h'));
+      if (ownBlock(uid)) line.append(el('small', 'mut', ' (eigene – ein anderer Planer schreibt gut)'));
+      else if (d.on) todo++;
+      r.append(line);
+    });
+    f.append(r);
+  });
+  const add = el('button', 'btn sec', '+ Weitere Person, die geholfen hat'); add.onclick = () => { eSub = 'plan'; toast('Im Plan hinzufügen, dann hier abrechnen.'); renderEins(); };
+  const go = el('button', 'btn', todo ? '✓ ' + todo + ' Gutschriften erstellen' : 'Nichts mehr gutzuschreiben'); go.disabled = !todo;
+  go.onclick = async () => {
+    const list = [];
+    (e.shifts || []).forEach(s => (e.plan[s.id] || []).forEach(uid => { const k = s.id + '|' + uid, d = A[k]; if (att[k] == null && d && d.on && !ownBlock(uid)) list.push({ s, uid, k, h: d.h }); }));
+    const sum = round2(list.reduce((a, x) => a + x.h, 0));
+    if (await ask(list.length + ' Gutschriften über zusammen ' + nf(sum) + ' h erstellen? Sie zählen sofort als genehmigt (mit deinem Namen vermerkt).', ['Gutschreiben', 'Abbrechen']) !== 0) return;
+    const b = F.writeBatch(db), now = Date.now(), mark = { status: 'ok', okBy: S.user.uid, okByName: myName().slice(0, 40), okAt: now }, upd = { tu: now };
+    list.forEach(x => {
+      b.set(F.doc(db, 'stunden', 'E_' + e.id + '_' + x.s.id + '_' + x.uid), Object.assign({ uid: x.uid, name: uName(x.uid).slice(0, 40), datum: e.date, taetigkeit: (e.title + ' ' + shLabel(x.s)).slice(0, 200), stunden: x.h, notiz: 'Einsatz', t: now, eins: e.id }, mark));
+      upd['att.' + x.k] = x.h;
+    });
+    const total = (e.shifts || []).reduce((a, s) => a + (e.plan[s.id] || []).length, 0);
+    if (Object.keys(att).length + list.length >= total) upd.done = true;
+    b.update(F.doc(db, 'einsaetze', e.id), upd);
+    fire(b.commit(), 'Gutschrift'); delete AD[e.id]; toast(list.length + ' Gutschriften erstellt.');
+  };
+  f.append(add, go);
+  if (e.done) f.append(el('p', 'okTxt', '✓ Einsatz abgeschlossen.'));
+  return f;
+}
+function einsMore(e) {
+  const f = document.createDocumentFragment();
+  const wa = el('button', 'btn', '💬 Aufruf für WhatsApp'); wa.onclick = () => einsShare(e);
+  const ed = el('button', 'btn sec', '✎ Einsatz bearbeiten'); ed.onclick = () => { eEdit = JSON.parse(JSON.stringify(e)); renderEins(); window.scrollTo(0, 0); };
+  const op = eOpen(e);
+  const cl = el('button', 'btn sec', op ? 'Anmeldung jetzt schließen' : 'Anmeldung wieder öffnen');
+  cl.onclick = async () => {
+    if (op) { fire(F.updateDoc(F.doc(db, 'einsaetze', e.id), { closed: true, tu: Date.now() }), 'Schließen'); toast('Anmeldung geschlossen.'); return; }
+    const v = await askIn('Neuer Anmeldeschluss (TT.MM. HH:MM)', 'z. B. 10.12. 20:00', '');
+    if (v == null) return;
+    const m = /^(\d{1,2})\.(\d{1,2})\.?\s+(\d{1,2}):(\d{2})$/.exec(v.trim()); if (!m) { toast('Bitte als TT.MM. HH:MM eingeben.'); return; }
+    const yy = +e.date.slice(0, 4), dl = new Date(yy, +m[2] - 1, +m[1], +m[3], +m[4]).getTime();
+    if (!(dl > Date.now())) { toast('Der Zeitpunkt liegt in der Vergangenheit.'); return; }
+    fire(F.updateDoc(F.doc(db, 'einsaetze', e.id), { closed: false, planPub: false, dl, tu: Date.now() }), 'Öffnen'); toast('Anmeldung offen bis ' + dlText(dl) + '.');
+  };
+  const nm = el('label', 'chk'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!e.showNames;
+  cb.onchange = () => einsSetNames(e, cb.checked);
+  nm.append(cb, el('span', null, 'Mitglieder sehen die Namen der Gemeldeten und Eingeteilten (sonst nur die Anzahl)'));
+  const del = el('button', 'btn sec dng', 'Einsatz löschen');
+  del.onclick = async () => {
+    if (await ask('„' + e.title + '“ mit allen Meldungen löschen? Bereits gutgeschriebene Stunden bleiben erhalten.', ['Löschen', 'Abbrechen']) !== 0) return;
+    const b = F.writeBatch(db); eMelds.forEach(m => b.delete(F.doc(db, 'einsatzMeld', m.id)));
+    b.delete(F.doc(db, 'einsatzBoard', e.id)); b.delete(F.doc(db, 'einsaetze', e.id));
+    fire(b.commit(), 'Löschen'); S.einsSel = null; toast('Einsatz gelöscht.');
+  };
+  f.append(wa, ed, cl, nm, del);
+  return f;
+}
+function einsSetNames(e, on) {
+  const b = F.writeBatch(db), upd = { showNames: on, tu: Date.now() };
+  if (on && e.plan) { const pn = {}; [].concat(...Object.values(e.plan)).forEach(u => { pn[u] = uName(u); }); upd.planNames = pn; }
+  if (!on) upd.planNames = F.deleteField();
+  b.update(F.doc(db, 'einsaetze', e.id), upd);
+  const bu = {}; eMelds.forEach(m => { bu['m.' + m.uid] = on ? { s: m.s || {}, n: (m.name || '').slice(0, 40) } : { s: m.s || {} }; });
+  if (Object.keys(bu).length) b.update(F.doc(db, 'einsatzBoard', e.id), bu);
+  fire(b.commit(), 'Namen'); toast(on ? 'Namen sind jetzt für Mitglieder sichtbar.' : 'Mitglieder sehen nur noch die Anzahl.');
+}
+async function einsShare(e) {
+  const sh = e.shifts || [], tot = sh.reduce((a, s) => a + (+s.need || 0), 0);
+  const txt = 'Hallo zusammen,\n' + 'am ' + wdate(e.date).replace(/, /, ' ') + ' ' + (e.place ? 'findet „' + e.title + '“ (' + e.place + ') statt.' : 'findet „' + e.title + '“ statt.') +
+    (e.desc ? '\n' + e.desc : '') + '\n\nGeplant sind ' + sh.length + (sh.length === 1 ? ' Schicht' : ' Schichten') + ' (' + tot + ' Helfer):\n' +
+    sh.map(s => '• ' + s.from + ' - ' + s.to + ' Uhr' + (s.need ? ' (' + s.need + ' Pers.)' : '') + (s.note ? ' – ' + s.note : '')).join('\n') +
+    '\n\nDie optimale Möglichkeit, euer Stundenkonto zu verbessern. Meldet euch bis ' + dlText(e.dl) + ' in WexStunden mit Wunsch- und Ausweichschicht:\n' + EINS_URL + '?e=' + e.id;
+  if (navigator.share) { try { await navigator.share({ text: txt }); return; } catch (err) { if (err && err.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(txt); toast('Text kopiert – jetzt in WhatsApp einfügen.'); return; } catch (err) {}
+  askText('Text zum Kopieren:', txt);
+}
+function einsExcel(e) {
+  if (!window.XLSX) { toast('Excel-Bibliothek konnte nicht geladen werden.'); return; }
+  const sh = e.shifts || [], y = e.date.slice(0, 4), plan = PD[e.id] || e.plan || {};
+  const a1 = [[e.title + ' – ' + wdate(e.date) + (e.place ? ' – ' + e.place : '')], [], ['Schicht', 'Stunden', 'Benötigt', 'Eingeteilt', 'Personen', 'Hinweis']];
+  sh.forEach(s => a1.push([shLabel(s), shHours(s), +s.need || 0, (plan[s.id] || []).length, (plan[s.id] || []).map(uName).join(', '), s.note || '']));
+  a1.push([], [e.planPub ? 'Plan veröffentlicht' : 'Entwurf / noch nicht veröffentlicht']);
+  const a2 = [['Name'].concat(sh.map(s => s.from + '–' + s.to)).concat(['max. Schichten', 'offene Pflichtstunden ' + y, 'Kommentar', 'gemeldet am'])];
+  eMelds.slice().sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(m => a2.push([m.name].concat(sh.map(s => (m.s || {})[s.id] === 'w' ? 'Wunsch' : (m.s || {})[s.id] === 'a' ? 'geht auch' : '')).concat([m.max || 'egal', openFor(m.uid, y), m.note || '', m.t ? new Date(m.t).toLocaleString('de-DE') : ''])));
+  const wb = XLSX.utils.book_new(), w1 = XLSX.utils.aoa_to_sheet(a1), w2 = XLSX.utils.aoa_to_sheet(a2);
+  w1['!cols'] = [{ wch: 18 }, { wch: 8 }, { wch: 9 }, { wch: 10 }, { wch: 45 }, { wch: 30 }];
+  w2['!cols'] = [{ wch: 22 }].concat(sh.map(() => ({ wch: 12 }))).concat([{ wch: 12 }, { wch: 14 }, { wch: 30 }, { wch: 18 }]);
+  XLSX.utils.book_append_sheet(wb, w1, 'Schichtplan'); XLSX.utils.book_append_sheet(wb, w2, 'Meldungen');
+  const fn = 'Schichtplan-' + e.date + '-' + e.title.replace(/[^A-Za-z0-9äöüÄÖÜß-]+/g, '_').slice(0, 40) + '.xlsx';
+  if (download(fn, XLSX.write(wb, { bookType: 'xlsx', type: 'array' }), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) toast('Excel-Datei erstellt.');
+}
+
+/* --- Anlegen / Bearbeiten --- */
+const sid = () => Math.random().toString(36).slice(2, 8);
+function newEins() {
+  const d = new Date(Date.now() + 14 * 864e5), iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const dl = new Date(d.getTime() - 4 * 864e5); dl.setHours(20, 0, 0, 0);
+  return { title: '', date: iso, place: '', desc: '', dl: dl.getTime(), showNames: false, prefNeed: true,
+    shifts: [{ id: sid(), from: '10:00', to: '12:30', need: 2, note: '' }, { id: sid(), from: '12:30', to: '15:00', need: 2, note: '' }, { id: sid(), from: '15:00', to: '17:30', need: 2, note: '' }] };
+}
+function einsForm() {
+  const d = eEdit, card = el('div', 'card');
+  card.append(el('h2', null, d.id ? 'Einsatz bearbeiten' : 'Neuer Einsatz'));
+  const inp = (label, key, attrs) => { const l = el('label', null, label), i = el((attrs && attrs.tag) || 'input'); Object.assign(i, attrs || {}); i.value = d[key] || ''; i.oninput = () => { d[key] = i.value; }; card.append(l, i); return i; };
+  inp('Titel', 'title', { maxLength: 80, placeholder: 'z. B. Weihnachtsmarkt Rehnenhof' });
+  const r1 = el('div', 'row'), c1 = el('div'), c2 = el('div');
+  c1.append(el('label', null, 'Datum')); const di = el('input'); di.type = 'date'; di.value = d.date; di.oninput = () => { d.date = di.value; }; c1.append(di);
+  c2.append(el('label', null, 'Ort')); const pi = el('input'); pi.maxLength = 80; pi.value = d.place || ''; pi.oninput = () => { d.place = pi.value; }; c2.append(pi);
+  r1.append(c1, c2); card.append(r1);
+  inp('Beschreibung (optional)', 'desc', { tag: 'textarea', maxLength: 800, placeholder: 'z. B. Wir sind mit einem kleinen Stand vertreten …' });
+  const dlD = new Date(d.dl), r2 = el('div', 'row'), c3 = el('div'), c4 = el('div');
+  const pad = n => String(n).padStart(2, '0');
+  c3.append(el('label', null, 'Anmeldeschluss')); const dd = el('input'); dd.type = 'date'; dd.value = dlD.getFullYear() + '-' + pad(dlD.getMonth() + 1) + '-' + pad(dlD.getDate()); c3.append(dd);
+  c4.append(el('label', null, 'Uhrzeit')); const dt = el('input'); dt.type = 'time'; dt.value = pad(dlD.getHours()) + ':' + pad(dlD.getMinutes()); c4.append(dt);
+  const setDl = () => { const t = new Date(dd.value + 'T' + (dt.value || '20:00')).getTime(); if (t) d.dl = t; }; dd.oninput = setDl; dt.oninput = setDl;
+  r2.append(c3, c4); card.append(r2);
+  card.append(el('h3', 'eh3', 'Schichten'));
+  d.shifts.forEach((s, i) => {
+    const r = el('div', 'eshform');
+    const tf = el('input'); tf.type = 'time'; tf.value = s.from; tf.oninput = () => { s.from = tf.value; };
+    const tt = el('input'); tt.type = 'time'; tt.value = s.to; tt.oninput = () => { s.to = tt.value; };
+    const nn = el('input'); nn.inputMode = 'numeric'; nn.value = s.need; nn.title = 'Personen'; nn.oninput = () => { s.need = Math.max(0, Math.min(50, parseInt(nn.value, 10) || 0)); };
+    const x = el('button', 'ic', '🗑'); x.setAttribute('aria-label', 'Schicht entfernen'); x.disabled = d.shifts.length < 2;
+    x.onclick = () => { d.shifts.splice(i, 1); renderEins(); };
+    const top = el('div', 'eshrow'); top.append(tf, el('span', null, '–'), tt, el('span', 'mut', 'Pers.'), nn, x);
+    const no = el('input'); no.maxLength = 80; no.placeholder = 'Hinweis, z. B. inkl. Aufbau'; no.value = s.note || ''; no.oninput = () => { s.note = no.value; };
+    r.append(top, no); card.append(r);
+  });
+  const add = el('button', 'btn sec', '+ Schicht'); add.onclick = () => { const l = d.shifts[d.shifts.length - 1]; d.shifts.push({ id: sid(), from: l ? l.to : '10:00', to: '', need: 2, note: '' }); renderEins(); };
+  card.append(add);
+  const cb = (label, key) => { const l = el('label', 'chk'), c = el('input'); c.type = 'checkbox'; c.checked = !!d[key]; c.onchange = () => { d[key] = c.checked; }; l.append(c, el('span', null, label)); card.append(l); };
+  cb('Mitglieder sehen die Namen der Gemeldeten (sonst nur die Anzahl)', 'showNames');
+  const pn = el('label', 'chk'), pc = el('input'); pc.type = 'checkbox'; pc.checked = d.prefNeed !== false; pc.onchange = () => { d.prefNeed = pc.checked; };
+  pn.append(pc, el('span', null, 'Beim Planvorschlag bevorzugen, wer noch Pflichtstunden braucht')); card.append(pn);
+  const save = el('button', 'btn', d.id ? 'Speichern' : 'Einsatz anlegen'); save.onclick = () => einsSave(d);
+  const cancel = el('button', 'btn sec', 'Abbrechen'); cancel.onclick = () => { eEdit = null; renderEins(); };
+  card.append(save, cancel);
+  return card;
+}
+function einsSave(d) {
+  const title = String(d.title || '').trim();
+  if (!title) { toast('Bitte einen Titel eingeben.'); return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) { toast('Bitte ein Datum wählen.'); return; }
+  const sh = d.shifts.map(s => ({ id: s.id || sid(), from: s.from, to: s.to, need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) }));
+  if (!sh.length || sh.some(s => !shSpan(s))) { toast('Bitte bei jeder Schicht Beginn und Ende eintragen.'); return; }
+  if (!(d.dl > 0)) { toast('Bitte einen Anmeldeschluss eintragen.'); return; }
+  const now = Date.now();
+  const v = { title: title.slice(0, 80), date: d.date, place: String(d.place || '').trim().slice(0, 80), desc: String(d.desc || '').trim().slice(0, 800), dl: d.dl, shifts: sh, showNames: !!d.showNames, prefNeed: d.prefNeed !== false, tu: now };
+  if (d.id) {
+    fire(F.updateDoc(F.doc(db, 'einsaetze', d.id), v), 'Einsatz speichern'); toast('Gespeichert.');
+    if (d.showNames !== !!(S.eins.find(x => x.id === d.id) || {}).showNames) einsSetNames(Object.assign({}, S.eins.find(x => x.id === d.id), { id: d.id }), !!d.showNames);
+    S.einsSel = d.id;
+  } else {
+    const ref = F.doc(F.collection(db, 'einsaetze')), b = F.writeBatch(db);
+    b.set(ref, Object.assign(v, { closed: false, planPub: false, done: false, by: S.user.uid, byName: myName().slice(0, 40), t: now }));
+    b.set(F.doc(db, 'einsatzBoard', ref.id), { m: {} });
+    fire(b.commit(), 'Einsatz anlegen'); S.einsSel = ref.id; eSub = 'edit';
+    toast('Angelegt. Unter „Mehr“ findest du den Text für WhatsApp.');
+  }
+  eEdit = null; renderEins();
+}
 
 /* ---------- Start ---------- */
 document.querySelectorAll('nav button').forEach(b => { b.onclick = () => setView(b.dataset.v); });
