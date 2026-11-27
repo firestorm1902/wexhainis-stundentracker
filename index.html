@@ -104,7 +104,9 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 .eshtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .eocc{display:block;color:var(--mu);margin-top:2px}
 .seg{display:flex;gap:6px;margin-top:8px}.seg button{flex:1;min-height:42px;border:1px solid var(--line);border-radius:10px;background:transparent;font:inherit;font-size:.88rem;color:var(--ink)}
-.seg button.on.kw{background:var(--wy);border-color:var(--wy);color:#141414;font-weight:700}.seg button.on.ka{background:var(--wy2);border-color:var(--wy);font-weight:700}.seg button.on.kn{background:var(--line);font-weight:700}
+.seg button.on.kw{background:var(--wy);border-color:var(--wy);color:#141414;font-weight:700}.seg button.on.ka{background:var(--wy2);border-color:var(--wy);font-weight:700}.seg button.on.kn{background:rgba(198,40,40,.14);border-color:var(--pen);color:var(--pen);font-weight:700}
+.btn.decl{border-color:var(--pen);color:var(--pen)}
+.edecl{border-color:var(--pen);background:rgba(198,40,40,.08)}
 .eadm{border-color:var(--wy)}.eh3{font:700 .95rem Oswald,system-ui,sans-serif;margin:16px 0 6px}
 .mx{overflow-x:auto;margin:8px -4px}.mx table{border-collapse:collapse;font-size:.82rem;min-width:100%}
 .mx th,.mx td{border-bottom:1px solid var(--line);padding:6px 5px;text-align:left;vertical-align:top}.mx th{white-space:nowrap;color:var(--mu);font-weight:600}
@@ -382,7 +384,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.1';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -1521,6 +1523,7 @@ const eBoard = id => (S.boards[id] && S.boards[id].m) || {};
 const myMeld = id => S.myMelds.find(m => m.eid === id) || null;
 const myShift = e => e.planPub && e.plan ? (e.shifts || []).filter(s => (e.plan[s.id] || []).includes(S.user.uid)) : [];
 const openFor = (uid, y) => round2(Math.max(0, sollFor(uid, y) - istFor(uid, y)));
+const isDecl = m => !!m && !Object.keys(m.s || {}).length;   // Absage: Meldung ohne Schicht
 const eNeedsMe = e => eOpen(e) && !myMeld(e.id);
 
 function startEinsListeners() {
@@ -1584,11 +1587,12 @@ function renderEins() {
 }
 function einsCard(e) {
   const c = el('button', 'card ecard'), st = eState(e), b = eBoard(e.id), mine = myShift(e), mm = myMeld(e.id);
-  const free = (e.shifts || []).reduce((s, x) => s + (+x.need || 0), 0), reg = Object.keys(b).length;
+  const free = (e.shifts || []).reduce((s, x) => s + (+x.need || 0), 0), reg = Object.values(b).filter(x => x.s && Object.keys(x.s).length).length;
   c.append(el('b', null, e.title), el('small', 'mut', wdate(e.date) + (e.place ? ' · ' + e.place : '') + ' · ' + (e.shifts || []).length + ' Schichten'));
   const tags = el('div'); const tag = (t, cls) => tags.append(el('span', 'tag ' + (cls || ''), t));
   tag(st[0], st[1]);
   if (mine.length) tag('Du: ' + mine.map(shLabel).join(', '), 'ok');
+  else if (isDecl(mm)) tag('Du hast abgesagt');
   else if (mm) tag(e.planPub ? 'Ersatz' : 'Du hast dich gemeldet', 'ok');
   else if (eOpen(e)) tag('Noch nicht gemeldet', 'warn');
   if (canEins()) tag(reg + ' Meldungen · ' + free + ' Plätze');
@@ -1610,6 +1614,7 @@ function einsDetail(e) {
   if (e.planPub) {
     const b = el('div', 'card ebanner' + (mine.length ? ' mine' : ''));
     if (mine.length) b.append(el('b', null, '✅ Du bist eingeteilt'), el('div', null, mine.map(s => shLabel(s) + (s.note ? ' (' + s.note + ')' : '')).join(' · ')));
+    else if (isDecl(mm)) b.append(el('b', null, 'Du hast für diesen Einsatz abgesagt.'));
     else if (mm) b.append(el('b', null, 'Du bist diesmal nicht eingeteilt'), el('small', 'mut', 'Danke für deine Meldung – du stehst auf der Ersatzliste.'));
     else b.append(el('b', null, 'Der Schichtplan steht.'));
     f.append(b);
@@ -1617,6 +1622,7 @@ function einsDetail(e) {
   // Schichten mit Belegung und Auswahl
   const open = eOpen(e), d = EF[e.id] || (EF[e.id] = mm ? { s: Object.assign({}, mm.s || {}), max: mm.max || 0, note: mm.note || '' } : { s: {}, max: 0, note: '' });
   const sc = el('div', 'card'); sc.append(el('h2', null, open ? 'Wann kannst du?' : 'Schichten'));
+  if (open && isDecl(mm)) { const n = el('div', 'card edecl'); n.style.margin = '6px 0'; n.append(el('b', null, '🙅 Du hast abgesagt.'), el('small', 'mut', ' Wenn du doch kannst: Schichten wählen und senden.')); sc.append(n); }
   if (open) sc.append(el('small', 'mut', 'Pro Schicht: ⭐ am liebsten · ✓ geht auch · ✗ geht nicht.'));
   const B = eBoard(e.id);
   (e.shifts || []).forEach(s => {
@@ -1649,7 +1655,8 @@ function einsDetail(e) {
     const need = openFor(S.user.uid, y), h1 = (e.shifts || []).length ? shHours(e.shifts[0]) : 0;
     if (need > 0) sc.append(el('p', 'okTxt', '💪 Dir fehlen in ' + y + ' noch ' + nf(need) + ' h – eine Schicht bringt ' + nf(h1) + ' h.'));
     const send = el('button', 'btn', mm ? 'Änderung senden' : 'Anmeldung senden'); send.onclick = () => einsSend(e); sc.append(send);
-    if (mm) { const off = el('button', 'btn sec dng', 'Abmelden'); off.onclick = () => einsWithdraw(e); sc.append(off); }
+    if (!isDecl(mm)) { const no = el('button', 'btn sec decl', '🙅 Ich kann diesmal gar nicht'); no.onclick = () => einsDecline(e); sc.append(no); }
+    if (mm) { const off = el('button', 'btn sec', isDecl(mm) ? 'Absage zurücknehmen' : 'Abmelden'); off.onclick = () => einsWithdraw(e); sc.append(off); }
     sc.append(el('small', 'mut', 'Änderungen sind bis ' + dlText(e.dl) + ' möglich. Danach erstellen die Planer den Schichtplan.'));
   }
   f.append(sc);
@@ -1658,7 +1665,7 @@ function einsDetail(e) {
 }
 function einsSend(e) {
   const d = EF[e.id], keys = Object.keys(d.s || {});
-  if (!keys.length) { toast('Bitte mindestens eine Schicht mit ⭐ oder ✓ wählen – oder „Abmelden“.'); return; }
+  if (!keys.length) { toast('Bitte mindestens eine Schicht mit ⭐ oder ✓ wählen – oder „Ich kann diesmal gar nicht“.'); return; }
   const uid = S.user.uid, mm = myMeld(e.id), now = Date.now();
   const meld = { eid: e.id, uid, name: myName().slice(0, 40), s: d.s, max: +d.max || 0, note: String(d.note || '').trim().slice(0, 300), t: mm ? (mm.t || now) : now, tu: now };
   const entry = { s: d.s }; if (e.showNames) entry.n = meld.name;
@@ -1668,12 +1675,23 @@ function einsSend(e) {
   fire(b.commit(), 'Anmeldung senden');
   toast(mm ? 'Änderung gesendet.' : 'Danke! Deine Anmeldung ist eingegangen.');
 }
+async function einsDecline(e) {
+  const d = EF[e.id] || {}, uid = S.user.uid, mm = myMeld(e.id), now = Date.now();
+  const meld = { eid: e.id, uid, name: myName().slice(0, 40), s: {}, max: 0, note: String(d.note || '').trim().slice(0, 300), t: mm ? (mm.t || now) : now, tu: now };
+  const b = F.writeBatch(db);
+  b.set(F.doc(db, 'einsatzMeld', e.id + '_' + uid), meld);
+  b.update(F.doc(db, 'einsatzBoard', e.id), { ['m.' + uid]: { s: {} } });
+  fire(b.commit(), 'Absagen');
+  EF[e.id] = { s: {}, max: 0, note: meld.note };
+  toast('Danke für die Rückmeldung – du bist für diesen Einsatz abgemeldet.');
+}
 async function einsWithdraw(e) {
-  if (await ask('Von „' + e.title + '“ abmelden?', ['Abmelden', 'Abbrechen']) !== 0) return;
+  const decl = isDecl(myMeld(e.id));
+  if (!decl && await ask('Von „' + e.title + '“ abmelden?', ['Abmelden', 'Abbrechen']) !== 0) return;
   const uid = S.user.uid, b = F.writeBatch(db);
   b.delete(F.doc(db, 'einsatzMeld', e.id + '_' + uid));
   b.update(F.doc(db, 'einsatzBoard', e.id), { ['m.' + uid]: F.deleteField() });
-  fire(b.commit(), 'Abmelden'); delete EF[e.id]; toast('Abgemeldet.');
+  fire(b.commit(), 'Abmelden'); delete EF[e.id]; toast(decl ? 'Absage zurückgenommen.' : 'Abgemeldet.');
 }
 
 /* --- Verwaltung eines Einsatzes --- */
@@ -1693,7 +1711,7 @@ function einsAdmin(e) {
 }
 function einsMatrix(e) {
   const f = document.createDocumentFragment(), y = e.date.slice(0, 4), sh = e.shifts || [];
-  const ms = eMelds.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
+  const ms = eMelds.filter(m => !isDecl(m)).sort((a, b) => (a.t || 0) - (b.t || 0)), decl = eMelds.filter(isDecl);
   f.append(el('small', 'mut', ms.length + (ms.length === 1 ? ' Meldung' : ' Meldungen') + ' · sortiert nach Eingang'));
   if (ms.length) {
     const wrap = el('div', 'mx'), t = el('table'), hr = el('tr');
@@ -1715,8 +1733,12 @@ function einsMatrix(e) {
     sr.append(el('td')); t.append(sr);
     wrap.append(t); f.append(wrap);
   }
-  // Wer braucht noch Stunden und hat sich nicht gemeldet?
-  const reg = new Set(ms.map(m => m.uid));
+  if (decl.length) {
+    f.append(el('h3', 'eh3', 'Abgesagt (' + decl.length + ')'));
+    decl.forEach(m => f.append(el('div', 'eline', '🙅 ' + (m.name || '?') + (m.note ? ' – ' + m.note : ''))));
+  }
+  // Wer braucht noch Stunden und hat sich nicht gemeldet? (Absagen zählen als Rückmeldung)
+  const reg = new Set(eMelds.map(m => m.uid));
   const miss = S.users.filter(u => u.std === true && !u.blocked && !u.stdBlock && !u.deleted && !reg.has(u.id)).map(u => ({ u, o: openFor(u.id, y) })).filter(x => x.o > 0).sort((a, b) => b.o - a.o);
   if (S.users.length) {
     f.append(el('h3', 'eh3', 'Noch nicht gemeldet, brauchen aber Stunden (' + miss.length + ')'));
@@ -1773,7 +1795,7 @@ function planWarn(e, plan) {
     }
   });
   const used = new Set([].concat(...Object.values(plan)));
-  const res = eMelds.filter(m => !used.has(m.uid)).map(m => m.name);
+  const res = eMelds.filter(m => !used.has(m.uid) && !isDecl(m)).map(m => m.name);
   if (res.length) out.push('Ersatz (gemeldet, nicht eingeteilt): ' + res.join(', '));
   eMelds.forEach(m => { (sh.filter(s => (plan[s.id] || []).includes(m.uid) && !(m.s || {})[s.id])).forEach(s => out.push('ℹ ' + m.name + ' ist in ' + shLabel(s) + ' eingeteilt, hat dafür aber nichts angegeben.')); });
   return out;
@@ -1809,7 +1831,7 @@ function einsPlan(e) {
       const inPlan = new Set(list), cand = eMelds.filter(m => !inPlan.has(m.uid));
       cand.sort((a, b) => ((a.s || {})[s.id] === 'w' ? 0 : (a.s || {})[s.id] === 'a' ? 1 : 2) - ((b.s || {})[s.id] === 'w' ? 0 : (b.s || {})[s.id] === 'a' ? 1 : 2));
       const others = S.users.filter(u => u.std === true && !u.blocked && !u.stdBlock && !u.deleted && !inPlan.has(u.id) && !eMelds.some(m => m.uid === u.id)).sort((a, b) => String(a.name).localeCompare(String(b.name), 'de'));
-      const opts = cand.map(m => ({ uid: m.uid, t: ((m.s || {})[s.id] === 'w' ? '⭐ ' : (m.s || {})[s.id] === 'a' ? '✓ ' : '✗ ') + m.name })).concat(others.map(u => ({ uid: u.id, t: '○ ' + u.name + ' (nicht gemeldet)' })));
+      const opts = cand.map(m => ({ uid: m.uid, t: isDecl(m) ? '🙅 ' + m.name + ' (abgesagt)' : ((m.s || {})[s.id] === 'w' ? '⭐ ' : (m.s || {})[s.id] === 'a' ? '✓ ' : '✗ ') + m.name })).concat(others.map(u => ({ uid: u.id, t: '○ ' + u.name + ' (nicht gemeldet)' })));
       if (!opts.length) { toast('Keine weiteren Personen.'); return; }
       const i = await ask('Wer soll in ' + shLabel(s) + '?', opts.map(o => o.t).concat(['Abbrechen']));
       if (i < opts.length) { PD[e.id] = plan; list.push(opts[i].uid); renderEins(); }
@@ -1938,7 +1960,7 @@ function einsExcel(e) {
   sh.forEach(s => a1.push([shLabel(s), shHours(s), +s.need || 0, (plan[s.id] || []).length, (plan[s.id] || []).map(uName).join(', '), s.note || '']));
   a1.push([], [e.planPub ? 'Plan veröffentlicht' : 'Entwurf / noch nicht veröffentlicht']);
   const a2 = [['Name'].concat(sh.map(s => s.from + '–' + s.to)).concat(['max. Schichten', 'offene Pflichtstunden ' + y, 'Kommentar', 'gemeldet am'])];
-  eMelds.slice().sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(m => a2.push([m.name].concat(sh.map(s => (m.s || {})[s.id] === 'w' ? 'Wunsch' : (m.s || {})[s.id] === 'a' ? 'geht auch' : '')).concat([m.max || 'egal', openFor(m.uid, y), m.note || '', m.t ? new Date(m.t).toLocaleString('de-DE') : ''])));
+  eMelds.slice().sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(m => a2.push([m.name].concat(sh.map(s => isDecl(m) ? 'abgesagt' : (m.s || {})[s.id] === 'w' ? 'Wunsch' : (m.s || {})[s.id] === 'a' ? 'geht auch' : '')).concat([m.max || 'egal', openFor(m.uid, y), m.note || '', m.t ? new Date(m.t).toLocaleString('de-DE') : ''])));
   const wb = XLSX.utils.book_new(), w1 = XLSX.utils.aoa_to_sheet(a1), w2 = XLSX.utils.aoa_to_sheet(a2);
   w1['!cols'] = [{ wch: 18 }, { wch: 8 }, { wch: 9 }, { wch: 10 }, { wch: 45 }, { wch: 30 }];
   w2['!cols'] = [{ wch: 22 }].concat(sh.map(() => ({ wch: 12 }))).concat([{ wch: 12 }, { wch: 14 }, { wch: 30 }, { wch: 18 }]);
