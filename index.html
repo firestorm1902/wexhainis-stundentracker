@@ -119,7 +119,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 .ewarn{font-size:.82rem;background:var(--wy2);border-radius:8px;padding:6px 8px;margin-top:6px}
 .abr{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.abr .chk{flex:1}.hin{width:70px;min-height:38px;padding:6px 8px}
 .eshform{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px}.eshform>input{margin-top:6px}
-.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric],.eshrow input[inputmode=decimal]{width:54px;flex:none}.eshrow input.ttl{flex:1;min-width:0}.eshform.task{border-style:dashed}.ecatbox .eshform{border:none;border-top:1px solid var(--line);border-radius:0;padding:8px 0 4px;margin-top:6px}.ecatbox .eshrow{gap:4px}.ecatbox{border:1px solid var(--line);border-radius:12px;padding:6px 8px;margin-top:10px;background:rgba(127,127,127,.04)}.ecatbox .ecatin{font-weight:700}.eh3.ecat{margin:14px 0 2px}details.ecatd{border-top:1px solid var(--line);margin-top:4px}details.ecatd>summary{display:flex;align-items:center;gap:6px;padding:12px 0;cursor:pointer;list-style:none;font-size:1.05rem}details.ecatd>summary::-webkit-details-marker{display:none}details.ecatd>summary::before{content:'▸';display:inline-block;transition:transform .15s;color:var(--mut,#888)}details.ecatd[open]>summary::before{transform:rotate(90deg)}.ecats{margin-left:auto;font-weight:700}details.ecatd>.eshift{margin-left:14px}.enach{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--wy2)}details.eopen>summary{font-weight:700;cursor:pointer}details.eopen textarea{width:100%;min-height:110px;margin-top:6px}.eshrow .grow{flex:1}
+.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric],.eshrow input[inputmode=decimal]{width:54px;flex:none}.eshrow input.ttl{flex:1;min-width:0}.eshform.task{border-style:dashed}.ecatbox .eshform{border:none;border-top:1px solid var(--line);border-radius:0;padding:8px 0 4px;margin-top:6px}.ecatbox .eshrow{gap:4px}.ecatbox{border:1px solid var(--line);border-radius:12px;padding:6px 8px;margin-top:10px;background:rgba(127,127,127,.04)}.ecatbox .ecatin{font-weight:700}.eh3.ecat{margin:14px 0 2px}details.ecatd{border-top:1px solid var(--line);margin-top:4px}details.ecatd>summary{display:flex;align-items:center;gap:6px;padding:12px 0;cursor:pointer;list-style:none;font-size:1.05rem}details.ecatd>summary::-webkit-details-marker{display:none}details.ecatd>summary::before{content:'▸';display:inline-block;transition:transform .15s;color:var(--mut,#888)}details.ecatd[open]>summary::before{transform:rotate(90deg)}.ecats{margin-left:auto;font-weight:700}details.ecatd>.eshift{margin-left:14px}.elate{display:block;width:100%;text-align:left;border:2px solid var(--wy);background:var(--wy2);margin:10px 0}.ehint.late{border:2px solid var(--wy)}.tabs button .badge{margin-left:6px}.enach{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--wy2)}details.eopen>summary{font-weight:700;cursor:pointer}details.eopen textarea{width:100%;min-height:110px;margin-top:6px}.eshrow .grow{flex:1}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 
 /* Stempeluhr */
@@ -384,7 +384,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.11.1';
+const APP_VERSION = '1.11.2';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -412,7 +412,7 @@ applyTheme();
 function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
 
 /* ---------- Zustand ---------- */
-const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], einsOk: null, eins: [], boards: {}, myMelds: [], einsSel: null, view: 'new', editId: null, registering: false, dbError: '' };
+const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], einsOk: null, eins: [], boards: {}, myMelds: [], allMelds: [], einsSel: null, view: 'new', editId: null, registering: false, dbError: '' };
 let F = {}, db, auth, rowsKey = '';
 const unsub = { me: null, rows: null, users: null, cfg: null, soll: null, inv: null, rem: null, apps: null, eins: null, boards: null, myMeld: null, melds: null, eusers: null };
 const DATA_L = ['rows', 'cfg', 'soll', 'inv', 'rem'];
@@ -524,7 +524,7 @@ async function initFirebase() {
   }, err => console.warn('applinks', err));
   F.onAuthStateChanged(auth, async u => {
     stopL('me'); stopL('users'); DATA_L.forEach(stopL); stopEins(); rowsKey = '';
-    Object.assign(S, { einsOk: null, eins: [], boards: {}, myMelds: [], einsSel: null });
+    Object.assign(S, { einsOk: null, eins: [], boards: {}, myMelds: [], allMelds: [], einsSel: null });
     Object.assign(S, { user: u, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], editId: null, dbError: '' });
     if (!u) { render(); return; }
     render();
@@ -600,7 +600,7 @@ function render() {
     $('gProfile').hidden = a !== 'noprofile';
   }
   if (!ok) return;
-  const ne = $('neins'); ne.hidden = S.einsOk !== true; const nNeed = S.eins.filter(eNeedsMe).length; ne.replaceChildren('Einsätze'); if (nNeed) ne.append(el('span', 'badge', String(nNeed)));
+  const ne = $('neins'); ne.hidden = S.einsOk !== true; const nNeed = S.eins.filter(eNeedsMe).length + (canEins() ? S.eins.reduce((a, e) => a + lateFor(e).length, 0) : 0); ne.replaceChildren('Einsätze'); if (nNeed) ne.append(el('span', 'badge', String(nNeed)));
   syncMelds();
   renderList(); renderData(); renderEinsHint(); renderMyStd(); if (S.view === 'adm') renderAdm(); if (S.view === 'eins') renderEins();
 }
@@ -1538,6 +1538,9 @@ const guestOf = id => { for (const x of S.eins) { const g = (x.guests || {})[id]
 const credUid = id => isGuest(id) ? ((guestOf(id) || {}).uid || '') : id;
 // Nachmelden: Plan veröffentlicht, Einsatz noch nicht vorbei und nicht abgerechnet
 const eLate = e => !!e.planPub && !e.done && !ePast(e);
+// offene Nachmeldungen: nachgemeldet, aber (noch) nicht in dieser Schicht eingeteilt
+const lateFor = e => { if (!eLate(e)) return []; const out = []; const ms = S.einsSel === e.id && eMelds.length ? eMelds : S.allMelds.filter(m => m.eid === e.id);
+  ms.forEach(m => Object.keys(m.nach || {}).forEach(sid => { const s = (e.shifts || []).find(x => x.id === sid); if (s && !(((e.plan || {})[sid]) || []).includes(m.uid)) out.push({ m, s }); })); return out; };
 const shOpen = (e, s) => ((e.plan || {})[s.id] || []).length < (+s.need || 0);
 const eNeedsMe = e => eOpen(e) && !myMeld(e.id);
 
@@ -1552,8 +1555,12 @@ function startEinsListeners() {
     S.myMelds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
   }, deny);
 }
-function stopEins() { ['eins', 'boards', 'myMeld', 'melds', 'eusers'].forEach(stopL); eMeldsFor = null; }
+function stopEins() { ['eins', 'boards', 'myMeld', 'melds', 'eusers', 'allMeld'].forEach(stopL); S.allMelds = []; eMeldsFor = null; }
 function syncMelds() {
+  // Planer: alle Meldungen, um offene Nachmeldungen überall anzuzeigen (Reiter, Einsatzkarte, Startseite)
+  if (S.einsOk === true && canEins() && !unsub.allMeld) unsub.allMeld = F.onSnapshot(F.collection(db, 'einsatzMeld'), snap => {
+    S.allMelds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
+  }, err => console.warn('Nachmeldungen', err));
   const id = S.view === 'eins' && canEins() ? S.einsSel : null;
   if (id === eMeldsFor) return;
   stopL('melds'); eMeldsFor = id; eMelds = [];
@@ -1573,6 +1580,12 @@ const uName = uid => { if (isGuest(uid)) { const g = guestOf(uid); return g ? g.
 function renderEinsHint() {
   const box = $('einsHint'); box.replaceChildren();
   if (S.einsOk !== true) return;
+  if (canEins()) S.eins.filter(e => lateFor(e).length).forEach(e => {
+    const L = lateFor(e), c = el('button', 'card ehint late');
+    c.append(el('b', null, '🙋 ' + L.length + (L.length === 1 ? ' Nachmeldung' : ' Nachmeldungen') + ': ' + e.title), el('small', 'mut', L.map(x => x.m.name + ' → ' + shLabel(x.s)).join(' · ')));
+    c.onclick = () => { S.einsSel = e.id; eSub = 'plan'; setView('eins'); window.scrollTo(0, 0); };
+    box.append(c);
+  });
   S.eins.filter(e => !ePast(e) && (eNeedsMe(e) || myShift(e).length)).slice(0, 3).forEach(e => {
     const mine = myShift(e), c = el('button', 'card ehint' + (mine.length ? ' mine' : ''));
     c.append(el('b', null, (mine.length ? '✅ Du bist eingeteilt: ' : '🙋 Helfer gesucht: ') + e.title),
@@ -1611,7 +1624,7 @@ function einsCard(e) {
   else if (isDecl(mm)) tag('Du hast abgesagt');
   else if (mm) tag(e.planPub ? 'Ersatz' : 'Du hast dich gemeldet', 'ok');
   else if (eOpen(e)) tag('Noch nicht gemeldet', 'warn');
-  if (canEins()) tag(reg + ' Meldungen · ' + free + ' Plätze');
+  if (canEins()) { const L = lateFor(e).length; if (L) tag('🙋 ' + L + (L === 1 ? ' Nachmeldung' : ' Nachmeldungen') + ' – eintragen', 'warn'); tag(reg + ' Meldungen · ' + free + ' Plätze'); }
   c.append(tags);
   c.onclick = () => { S.einsSel = e.id; eSub = 'anm'; render(); window.scrollTo(0, 0); };
   return c;
@@ -1743,10 +1756,12 @@ function einsAdmin(e) {
   const box = el('div', 'card eadm');
   box.append(el('h2', null, '🛠 Planung'));
   const tabs = el('div', 'tabs');
+  const LN = lateFor(e).length;
   [['anm', 'Meldungen'], ['plan', 'Plan'], ['abr', 'Abrechnung'], ['edit', 'Mehr']].forEach(([k, t]) => {
-    const b = el('button', eSub === k ? 'on' : '', t); b.onclick = () => { eSub = k; renderEins(); }; tabs.append(b);
+    const b = el('button', eSub === k ? 'on' : '', t); if (k === 'plan' && LN) b.append(el('span', 'badge', String(LN))); b.onclick = () => { eSub = k; renderEins(); }; tabs.append(b);
   });
   box.append(tabs);
+  if (LN && eSub !== 'plan') { const n = el('button', 'card elate'); n.append(el('b', null, '🙋 ' + LN + (LN === 1 ? ' neue Nachmeldung' : ' neue Nachmeldungen')), el('small', null, ' – im Reiter „Plan“ eintragen')); n.onclick = () => { eSub = 'plan'; renderEins(); }; box.append(n); }
   if (eSub === 'anm') box.append(einsMatrix(e));
   else if (eSub === 'plan') box.append(einsPlan(e));
   else if (eSub === 'abr') box.append(einsAbr(e));
@@ -1877,6 +1892,15 @@ function einsPlan(e) {
   f.append(el('small', 'mut', e.planPub ? (dirty ? 'Geänderter Entwurf – Mitglieder sehen noch den veröffentlichten Plan.' : 'Veröffentlicht – die Mitglieder sehen diesen Plan.') : 'Entwurf – noch nicht für die Mitglieder sichtbar.'));
   const pr = m => { const mm = eMelds.find(x => x.uid === m); return mm; };
   const W = planWarn(e, plan);
+  const LT = lateFor(e).filter(x => !(plan[x.s.id] || []).includes(x.m.uid));
+  if (LT.length) {
+    const lb = el('div', 'card elate'); lb.append(el('b', null, '🙋 Nachmeldungen für offene Schichten'));
+    LT.forEach(x => { const r = el('div', 'enach'); r.append(el('span', null, x.m.name + ' → ' + shLabel(x.s) + ' (' + ((plan[x.s.id] || []).length) + '/' + (+x.s.need || 0) + ')'));
+      const go = el('button', 'chip add', '+ eintragen'); go.onclick = () => { PD[e.id] = plan; (plan[x.s.id] = plan[x.s.id] || []).push(x.m.uid); renderEins(); }; r.append(go); lb.append(r); });
+    lb.append(el('small', 'mut', 'Danach unten „Änderung veröffentlichen“ tippen, damit die Mitglieder die Einteilung sehen.'));
+    f.append(lb);
+  }
+  if (PD[e.id] && e.planPub) f.append(el('div', 'ewarn', '⚠ Geändert, aber noch nicht veröffentlicht – unten „Änderung veröffentlichen“ tippen.'));
   (e.shifts || []).forEach(s => { if (!plan[s.id]) plan[s.id] = []; });
   catSections(e, 'plan', f, (s, inCat) => {
     const r = el('div', 'eshift'), list = plan[s.id], need = +s.need || 0;
@@ -1912,8 +1936,8 @@ function einsPlan(e) {
     W.filter(w => w.s === s).forEach(w => r.append(el('div', 'ewarn', w.t)));
     return r;
   }, list => {
-    const n = list.reduce((a, x) => a + plan[x.id].length, 0), need = list.reduce((a, x) => a + (+x.need || 0), 0);
-    return [el('span', n >= need ? 'okTxt' : 'warnTxt', (n >= need ? '' : '⚠ ') + n + ' / ' + need)];
+    const n = list.reduce((a, x) => a + plan[x.id].length, 0), need = list.reduce((a, x) => a + (+x.need || 0), 0), lt = LT.filter(x => list.includes(x.s)).length;
+    return (lt ? [el('span', 'tag warn', '🙋 ' + lt)] : []).concat([el('span', n >= need ? 'okTxt' : 'warnTxt', (n >= need ? '' : '⚠ ') + n + ' / ' + need)]);
   });
   W.filter(w => !w.s).forEach(w => f.append(el('div', 'ewarn', w.t)));
   if (eLate(e) && !PD[e.id] && (e.shifts || []).some(s => shOpen(e, s))) f.append(einsOpenTools(e));
