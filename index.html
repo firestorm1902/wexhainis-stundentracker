@@ -119,7 +119,7 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 .ewarn{font-size:.82rem;background:var(--wy2);border-radius:8px;padding:6px 8px;margin-top:6px}
 .abr{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.abr .chk{flex:1}.hin{width:70px;min-height:38px;padding:6px 8px}
 .eshform{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px}.eshform>input{margin-top:6px}
-.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric]{width:54px;flex:none}
+.eshrow{display:flex;align-items:center;gap:6px}.eshrow input[type=time]{flex:1;min-width:0}.eshrow input[inputmode=numeric],.eshrow input[inputmode=decimal]{width:54px;flex:none}.eshrow input.ttl{flex:1;min-width:0}.eshform.task{border-style:dashed}.eshrow .grow{flex:1}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:.9rem;z-index:40;max-width:90%;text-align:center}
 
 /* Stempeluhr */
@@ -384,7 +384,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.9.0';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -1493,6 +1493,7 @@ $('alSave').onclick = () => {
 
 /* ---------- Einsätze / Schichtplanung ----------
    einsaetze/{id}       = { title, date, place, desc, dl (Anmeldeschluss, ms), shifts: [{ id, from, to, need, note }],
+                            Aufgabe ohne Uhrzeit (z. B. Kuchen backen): { id, kind: 'task', title, h (Stunden je Person), need, note },
                             showNames, prefNeed, closed, plan: { sid: [uid] }, planPub, planNames: { uid: name } (nur bei showNames),
                             planAt, planBy, att: { 'sid|uid': Stunden }, done, by, byName, t, tu }
    einsatzBoard/{eid}   = { m: { uid: { s: { sid: 'w'|'a' }, n?: Name (nur bei showNames) } } }  – für alle lesbar (Zählung)
@@ -1506,9 +1507,13 @@ const PD = {};          // Plan-Entwürfe je Einsatz (Verwaltung)
 const AD = {};          // Abrechnungs-Entwürfe je Einsatz
 let eSub = 'anm', eEdit = null, eMelds = [], eMeldsFor = null;
 const hm = s => { const m = /^(\d{1,2}):(\d{2})$/.exec(s || ''); return m ? +m[1] * 60 + +m[2] : null; };
-const shSpan = s => { const a = hm(s.from), b0 = hm(s.to); if (a == null || b0 == null) return null; const b = b0 <= a ? b0 + 1440 : b0; return { a, b }; };
-const shHours = s => { const p = shSpan(s); return p ? round2((p.b - p.a) / 60) : 0; };
-const shLabel = s => s.from + '–' + s.to + ' Uhr';
+const isTask = s => !!s && s.kind === 'task';   // Aufgabe ohne Uhrzeit, z. B. Kuchen backen – zählt nicht als Schicht
+const realSh = e => (e.shifts || []).filter(s => !isTask(s));
+const taskSh = e => (e.shifts || []).filter(isTask);
+const shSpan = s => { if (isTask(s)) return null; const a = hm(s.from), b0 = hm(s.to); if (a == null || b0 == null) return null; const b = b0 <= a ? b0 + 1440 : b0; return { a, b }; };
+const shHours = s => { if (isTask(s)) return round2(+s.h || 0); const p = shSpan(s); return p ? round2((p.b - p.a) / 60) : 0; };
+const shLabel = s => isTask(s) ? (s.title || 'Kuchen backen') : s.from + '–' + s.to + ' Uhr';
+const shCol = s => isTask(s) ? (s.title || 'Kuchen') : s.from + '–' + s.to;
 const wdate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }); };
 const dlText = ms => new Date(ms).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' Uhr';
 const eOpen = e => !e.closed && !e.planPub && !e.done && Date.now() < (e.dl || 0);
@@ -1588,7 +1593,7 @@ function renderEins() {
 function einsCard(e) {
   const c = el('button', 'card ecard'), st = eState(e), b = eBoard(e.id), mine = myShift(e), mm = myMeld(e.id);
   const free = (e.shifts || []).reduce((s, x) => s + (+x.need || 0), 0), reg = Object.values(b).filter(x => x.s && Object.keys(x.s).length).length;
-  c.append(el('b', null, e.title), el('small', 'mut', wdate(e.date) + (e.place ? ' · ' + e.place : '') + ' · ' + (e.shifts || []).length + ' Schichten'));
+  c.append(el('b', null, e.title), el('small', 'mut', wdate(e.date) + (e.place ? ' · ' + e.place : '') + ' · ' + realSh(e).length + ' Schichten' + (taskSh(e).length ? ' · 🎂 ' + taskSh(e).map(shLabel).join(', ') : '')));
   const tags = el('div'); const tag = (t, cls) => tags.append(el('span', 'tag ' + (cls || ''), t));
   tag(st[0], st[1]);
   if (mine.length) tag('Du: ' + mine.map(shLabel).join(', '), 'ok');
@@ -1623,37 +1628,38 @@ function einsDetail(e) {
   const open = eOpen(e), d = EF[e.id] || (EF[e.id] = mm ? { s: Object.assign({}, mm.s || {}), max: mm.max || 0, note: mm.note || '' } : { s: {}, max: 0, note: '' });
   const sc = el('div', 'card'); sc.append(el('h2', null, open ? 'Wann kannst du?' : 'Schichten'));
   if (open && isDecl(mm)) { const n = el('div', 'card edecl'); n.style.margin = '6px 0'; n.append(el('b', null, '🙅 Du hast abgesagt.'), el('small', 'mut', ' Wenn du doch kannst: Schichten wählen und senden.')); sc.append(n); }
-  if (open) sc.append(el('small', 'mut', 'Pro Schicht: ⭐ am liebsten · ✓ geht auch · ✗ geht nicht.'));
+  if (open && realSh(e).length) sc.append(el('small', 'mut', 'Pro Schicht: ⭐ am liebsten · ✓ geht auch · ✗ geht nicht.'));
   const B = eBoard(e.id);
   (e.shifts || []).forEach(s => {
-    const r = el('div', 'eshift'), top = el('div', 'eshtop');
-    top.append(el('b', null, shLabel(s)), el('span', 'mut', nf(shHours(s)) + ' h · ' + (+s.need || 0) + ' Pers.'));
+    const r = el('div', 'eshift'), top = el('div', 'eshtop'), T = isTask(s);
+    top.append(el('b', null, (T ? '🎂 ' : '') + shLabel(s)), el('span', 'mut', nf(shHours(s)) + ' h' + (T ? ' je Person · ' + (+s.need || 0) + ' gesucht' : ' · ' + (+s.need || 0) + ' Pers.')));
     r.append(top); if (s.note) r.append(el('small', 'mut', s.note));
     const w = Object.values(B).filter(x => x.s && x.s[s.id] === 'w'), a = Object.values(B).filter(x => x.s && x.s[s.id] === 'a');
     let occ;
     if (e.planPub) { const n = (e.plan[s.id] || []).length; occ = 'eingeteilt: ' + n + ' von ' + (+s.need || 0); if (e.showNames && e.planNames) occ += ' – ' + (e.plan[s.id] || []).map(u => e.planNames[u] || '?').join(', '); }
+    else if (T) { occ = 'zugesagt: ' + w.concat(a).length + ' von ' + (+s.need || 0); if (e.showNames) { const nn = w.concat(a).map(x => x.n).filter(Boolean); if (nn.length) occ += ' – ' + nn.join(', '); } }
     else { occ = 'gemeldet: ⭐ ' + w.length + ' · ✓ ' + a.length + ' (gesucht ' + (+s.need || 0) + ')'; if (e.showNames) { const nn = w.concat(a).map(x => x.n).filter(Boolean); if (nn.length) occ += ' – ' + nn.join(', '); } }
     r.append(el('small', 'eocc', occ));
     if (open) {
       const seg = el('div', 'seg'), cur = d.s[s.id] || '';
-      [['w', '⭐ Wunsch'], ['a', '✓ Geht auch'], ['', '✗ Nein']].forEach(([k, t]) => {
+      (T ? [['w', '🎂 Mache ich'], ['', '✗ Nein']] : [['w', '⭐ Wunsch'], ['a', '✓ Geht auch'], ['', '✗ Nein']]).forEach(([k, t]) => {
         const b = el('button', cur === k ? 'on k' + (k || 'n') : '', t);
         b.onclick = () => { if (k) d.s[s.id] = k; else delete d.s[s.id]; renderEins(); }; seg.append(b);
       });
       r.append(seg);
-    } else if (mm && mm.s && mm.s[s.id]) r.append(el('small', 'eocc', 'Deine Angabe: ' + (mm.s[s.id] === 'w' ? '⭐ Wunsch' : '✓ geht auch')));
+    } else if (mm && mm.s && mm.s[s.id]) r.append(el('small', 'eocc', 'Deine Angabe: ' + (T ? '🎂 mache ich' : mm.s[s.id] === 'w' ? '⭐ Wunsch' : '✓ geht auch')));
     sc.append(r);
   });
   if (open) {
-    const ns = (e.shifts || []).length;
-    const ml = el('label', null, 'Ich arbeite höchstens'), sel = el('select');
+    const ns = realSh(e).length;
+    const ml = el('label', null, 'Ich arbeite höchstens' + (taskSh(e).length ? ' (Schichten, ohne ' + taskSh(e).map(shLabel).join(', ') + ')' : '')), sel = el('select');
     [[0, 'so viele wie nötig']].concat(Array.from({ length: Math.min(ns, 5) }, (_, i) => [i + 1, (i + 1) + (i ? ' Schichten' : ' Schicht')])).forEach(([v, t]) => { const o = el('option', null, t); o.value = v; sel.append(o); });
     sel.value = String(d.max || 0); sel.onchange = () => { d.max = +sel.value; };
     const nl = el('label', null, 'Kommentar (optional, sehen nur die Planer)'), ni = el('input'); ni.maxLength = 300; ni.value = d.note || ''; ni.placeholder = 'z. B. kann erst ab 11 Uhr';
     ni.oninput = () => { d.note = ni.value; };
-    sc.append(ml, sel, nl, ni);
-    const need = openFor(S.user.uid, y), h1 = (e.shifts || []).length ? shHours(e.shifts[0]) : 0;
-    if (need > 0) sc.append(el('p', 'okTxt', '💪 Dir fehlen in ' + y + ' noch ' + nf(need) + ' h – eine Schicht bringt ' + nf(h1) + ' h.'));
+    if (ns > 1) sc.append(ml, sel); sc.append(nl, ni);
+    const need = openFor(S.user.uid, y), r0 = realSh(e)[0], t0 = taskSh(e)[0];
+    if (need > 0) sc.append(el('p', 'okTxt', '💪 Dir fehlen in ' + y + ' noch ' + nf(need) + ' h' + (r0 ? ' – eine Schicht bringt ' + nf(shHours(r0)) + ' h' : '') + (t0 ? (r0 ? ', ' : ' – ') + shLabel(t0) + ' ' + nf(shHours(t0)) + ' h' : '') + '.'));
     const send = el('button', 'btn', mm ? 'Änderung senden' : 'Anmeldung senden'); send.onclick = () => einsSend(e); sc.append(send);
     if (!isDecl(mm)) { const no = el('button', 'btn sec decl', '🙅 Ich kann diesmal gar nicht'); no.onclick = () => einsDecline(e); sc.append(no); }
     if (mm) { const off = el('button', 'btn sec', isDecl(mm) ? 'Absage zurücknehmen' : 'Abmelden'); off.onclick = () => einsWithdraw(e); sc.append(off); }
@@ -1665,7 +1671,7 @@ function einsDetail(e) {
 }
 function einsSend(e) {
   const d = EF[e.id], keys = Object.keys(d.s || {});
-  if (!keys.length) { toast('Bitte mindestens eine Schicht mit ⭐ oder ✓ wählen – oder „Ich kann diesmal gar nicht“.'); return; }
+  if (!keys.length) { toast('Bitte mindestens eine Schicht oder Aufgabe wählen – oder „Ich kann diesmal gar nicht“.'); return; }
   const uid = S.user.uid, mm = myMeld(e.id), now = Date.now();
   const meld = { eid: e.id, uid, name: myName().slice(0, 40), s: d.s, max: +d.max || 0, note: String(d.note || '').trim().slice(0, 300), t: mm ? (mm.t || now) : now, tu: now };
   const entry = { s: d.s }; if (e.showNames) entry.n = meld.name;
@@ -1716,7 +1722,7 @@ function einsMatrix(e) {
   if (ms.length) {
     const wrap = el('div', 'mx'), t = el('table'), hr = el('tr');
     hr.append(el('th', null, 'Name'));
-    sh.forEach(s => { const th = el('th', null, s.from + '–' + s.to); hr.append(th); });
+    sh.forEach(s => { const th = el('th', null, (isTask(s) ? '🎂 ' : '') + shCol(s)); hr.append(th); });
     hr.append(el('th', null, 'fehlt'));
     t.append(hr);
     ms.forEach(m => {
@@ -1724,12 +1730,12 @@ function einsMatrix(e) {
       if (m.max) td.append(el('small', 'mut', ' max. ' + m.max));
       if (m.note) td.append(el('div', 'mxnote', m.note));
       tr.append(td);
-      sh.forEach(s => { const v = (m.s || {})[s.id]; tr.append(el('td', 'mxc ' + (v || 'n'), v === 'w' ? '⭐' : v === 'a' ? '✓' : '·')); });
+      sh.forEach(s => { const v = (m.s || {})[s.id]; tr.append(el('td', 'mxc ' + (v || 'n'), v && isTask(s) ? '🎂' : v === 'w' ? '⭐' : v === 'a' ? '✓' : '·')); });
       const o = openFor(m.uid, y); tr.append(el('td', o > 0 ? 'mxc warnTxt' : 'mxc okTxt', o > 0 ? nf(o) + ' h' : '✓'));
       t.append(tr);
     });
     const sr = el('tr', 'mxsum'); sr.append(el('td', null, 'Summe ⭐/✓'));
-    sh.forEach(s => { const w = ms.filter(m => (m.s || {})[s.id] === 'w').length, a = ms.filter(m => (m.s || {})[s.id] === 'a').length, need = +s.need || 0; sr.append(el('td', 'mxc ' + (w + a >= need ? 'okTxt' : 'warnTxt'), w + '/' + a + ' von ' + need)); });
+    sh.forEach(s => { const w = ms.filter(m => (m.s || {})[s.id] === 'w').length, a = ms.filter(m => (m.s || {})[s.id] === 'a').length, need = +s.need || 0; sr.append(el('td', 'mxc ' + (w + a >= need ? 'okTxt' : 'warnTxt'), (isTask(s) ? w + a : w + '/' + a) + ' von ' + need)); });
     sr.append(el('td')); t.append(sr);
     wrap.append(t); f.append(wrap);
   }
@@ -1768,8 +1774,10 @@ function einsPropose(e) {
   const P = eMelds.map(m => ({ uid: m.uid, s: m.s || {}, max: +m.max || 0, t: m.t || 0, open: openFor(m.uid, y), got: [] }));
   const plan = {}; sh.forEach(s => { plan[s.id] = []; });
   const clash = (p, s) => p.got.some(id => { const o = byId[id].sp; return o && s.sp && o.a < s.sp.b && s.sp.a < o.b; });
-  const can = (p, s) => !!p.s[s.id] && !plan[s.id].includes(p.uid) && (!p.max || p.got.length < p.max) && !clash(p, s);
-  const key = (p, s) => [p.got.length, p.s[s.id] === 'w' ? 0 : 1, e.prefNeed === false ? 0 : -p.open, p.t];
+  // Aufgaben (z. B. Kuchen) zählen nicht zur Höchstzahl an Schichten und kollidieren zeitlich mit nichts
+  const nReal = p => p.got.filter(id => !isTask(byId[id])).length, nSame = (p, s) => p.got.filter(id => isTask(byId[id]) === isTask(s)).length;
+  const can = (p, s) => !!p.s[s.id] && !plan[s.id].includes(p.uid) && (isTask(s) || !p.max || nReal(p) < p.max) && !clash(p, s);
+  const key = (p, s) => [nSame(p, s), p.s[s.id] === 'w' ? 0 : 1, e.prefNeed === false ? 0 : -p.open, p.t];
   const less = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false; };
   for (let guard = 0; guard < 500; guard++) {
     let best = null;
@@ -1816,12 +1824,12 @@ function einsPlan(e) {
   const pr = m => { const mm = eMelds.find(x => x.uid === m); return mm; };
   (e.shifts || []).forEach(s => {
     const r = el('div', 'eshift'), list = plan[s.id] || (plan[s.id] = []), need = +s.need || 0;
-    const top = el('div', 'eshtop'); top.append(el('b', null, shLabel(s)), el('span', list.length >= need ? 'okTxt' : 'warnTxt', list.length + ' / ' + need));
+    const top = el('div', 'eshtop'); top.append(el('b', null, (isTask(s) ? '🎂 ' : '') + shLabel(s)), el('span', list.length >= need ? 'okTxt' : 'warnTxt', list.length + ' / ' + need));
     r.append(top);
     const chips = el('div', 'chips');
     list.forEach(uid => {
       const m = pr(uid), v = m && (m.s || {})[s.id], c = el('span', 'chip');
-      c.append(el('span', null, (v === 'w' ? '⭐ ' : v === 'a' ? '✓ ' : '• ') + uName(uid) + (openFor(uid, y) > 0 ? ' · ' + nf(openFor(uid, y)) + ' h' : '')));
+      c.append(el('span', null, (v && isTask(s) ? '🎂 ' : v === 'w' ? '⭐ ' : v === 'a' ? '✓ ' : '• ') + uName(uid) + (openFor(uid, y) > 0 ? ' · ' + nf(openFor(uid, y)) + ' h' : '')));
       const x = el('button', null, '✕'); x.setAttribute('aria-label', 'Entfernen');
       x.onclick = () => { PD[e.id] = plan; list.splice(list.indexOf(uid), 1); renderEins(); };
       c.append(x); chips.append(c);
@@ -1831,9 +1839,9 @@ function einsPlan(e) {
       const inPlan = new Set(list), cand = eMelds.filter(m => !inPlan.has(m.uid));
       cand.sort((a, b) => ((a.s || {})[s.id] === 'w' ? 0 : (a.s || {})[s.id] === 'a' ? 1 : 2) - ((b.s || {})[s.id] === 'w' ? 0 : (b.s || {})[s.id] === 'a' ? 1 : 2));
       const others = S.users.filter(u => u.std === true && !u.blocked && !u.stdBlock && !u.deleted && !inPlan.has(u.id) && !eMelds.some(m => m.uid === u.id)).sort((a, b) => String(a.name).localeCompare(String(b.name), 'de'));
-      const opts = cand.map(m => ({ uid: m.uid, t: isDecl(m) ? '🙅 ' + m.name + ' (abgesagt)' : ((m.s || {})[s.id] === 'w' ? '⭐ ' : (m.s || {})[s.id] === 'a' ? '✓ ' : '✗ ') + m.name })).concat(others.map(u => ({ uid: u.id, t: '○ ' + u.name + ' (nicht gemeldet)' })));
+      const opts = cand.map(m => ({ uid: m.uid, t: isDecl(m) ? '🙅 ' + m.name + ' (abgesagt)' : ((m.s || {})[s.id] && isTask(s) ? '🎂 ' : (m.s || {})[s.id] === 'w' ? '⭐ ' : (m.s || {})[s.id] === 'a' ? '✓ ' : '✗ ') + m.name })).concat(others.map(u => ({ uid: u.id, t: '○ ' + u.name + ' (nicht gemeldet)' })));
       if (!opts.length) { toast('Keine weiteren Personen.'); return; }
-      const i = await ask('Wer soll in ' + shLabel(s) + '?', opts.map(o => o.t).concat(['Abbrechen']));
+      const i = await ask(isTask(s) ? 'Wer übernimmt „' + shLabel(s) + '“?' : 'Wer soll in ' + shLabel(s) + '?', opts.map(o => o.t).concat(['Abbrechen']));
       if (i < opts.length) { PD[e.id] = plan; list.push(opts[i].uid); renderEins(); }
     };
     chips.append(add); r.append(chips); f.append(r);
@@ -1869,7 +1877,7 @@ function einsAbr(e) {
   const ownBlock = uid => uid === S.user.uid && !S.isSuper;
   let todo = 0;
   (e.shifts || []).forEach(s => {
-    const r = el('div', 'eshift'); r.append(el('b', null, shLabel(s)));
+    const r = el('div', 'eshift'); r.append(el('b', null, (isTask(s) ? '🎂 ' : '') + shLabel(s)));
     (e.plan[s.id] || []).forEach(uid => {
       const k = s.id + '|' + uid, line = el('div', 'abr');
       if (att[k] != null) { line.append(el('span', null, uName(uid)), el('span', 'okTxt', '✓ ' + nf(att[k]) + ' h gutgeschrieben')); r.append(line); return; }
@@ -1944,10 +1952,11 @@ function einsSetNames(e, on) {
   fire(b.commit(), 'Namen'); toast(on ? 'Namen sind jetzt für Mitglieder sichtbar.' : 'Mitglieder sehen nur noch die Anzahl.');
 }
 async function einsShare(e) {
-  const sh = e.shifts || [], tot = sh.reduce((a, s) => a + (+s.need || 0), 0);
+  const sh = realSh(e), tk = taskSh(e), tot = sh.reduce((a, s) => a + (+s.need || 0), 0);
   const txt = 'Hallo zusammen,\n' + 'am ' + wdate(e.date).replace(/, /, ' ') + ' ' + (e.place ? 'findet „' + e.title + '“ (' + e.place + ') statt.' : 'findet „' + e.title + '“ statt.') +
-    (e.desc ? '\n' + e.desc : '') + '\n\nGeplant sind ' + sh.length + (sh.length === 1 ? ' Schicht' : ' Schichten') + ' (' + tot + ' Helfer):\n' +
-    sh.map(s => '• ' + s.from + ' - ' + s.to + ' Uhr' + (s.need ? ' (' + s.need + ' Pers.)' : '') + (s.note ? ' – ' + s.note : '')).join('\n') +
+    (e.desc ? '\n' + e.desc : '') + (sh.length ? '\n\nGeplant sind ' + sh.length + (sh.length === 1 ? ' Schicht' : ' Schichten') + ' (' + tot + ' Helfer):\n' +
+    sh.map(s => '• ' + s.from + ' - ' + s.to + ' Uhr' + (s.need ? ' (' + s.need + ' Pers.)' : '') + (s.note ? ' – ' + s.note : '')).join('\n') : '') +
+    (tk.length ? '\n\nAußerdem gesucht:\n' + tk.map(s => '• 🎂 ' + shLabel(s) + (s.need ? ' (' + s.need + '×)' : '') + ' – zählt ' + nf(shHours(s)) + ' h' + (s.note ? ' – ' + s.note : '')).join('\n') : '') +
     '\n\nDie optimale Möglichkeit, euer Stundenkonto zu verbessern. Meldet euch bis ' + dlText(e.dl) + ' in WexStunden mit Wunsch- und Ausweichschicht:\n' + EINS_URL + '?e=' + e.id;
   if (navigator.share) { try { await navigator.share({ text: txt }); return; } catch (err) { if (err && err.name === 'AbortError') return; } }
   try { await navigator.clipboard.writeText(txt); toast('Text kopiert – jetzt in WhatsApp einfügen.'); return; } catch (err) {}
@@ -1959,8 +1968,8 @@ function einsExcel(e) {
   const a1 = [[e.title + ' – ' + wdate(e.date) + (e.place ? ' – ' + e.place : '')], [], ['Schicht', 'Stunden', 'Benötigt', 'Eingeteilt', 'Personen', 'Hinweis']];
   sh.forEach(s => a1.push([shLabel(s), shHours(s), +s.need || 0, (plan[s.id] || []).length, (plan[s.id] || []).map(uName).join(', '), s.note || '']));
   a1.push([], [e.planPub ? 'Plan veröffentlicht' : 'Entwurf / noch nicht veröffentlicht']);
-  const a2 = [['Name'].concat(sh.map(s => s.from + '–' + s.to)).concat(['max. Schichten', 'offene Pflichtstunden ' + y, 'Kommentar', 'gemeldet am'])];
-  eMelds.slice().sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(m => a2.push([m.name].concat(sh.map(s => isDecl(m) ? 'abgesagt' : (m.s || {})[s.id] === 'w' ? 'Wunsch' : (m.s || {})[s.id] === 'a' ? 'geht auch' : '')).concat([m.max || 'egal', openFor(m.uid, y), m.note || '', m.t ? new Date(m.t).toLocaleString('de-DE') : ''])));
+  const a2 = [['Name'].concat(sh.map(shCol)).concat(['max. Schichten', 'offene Pflichtstunden ' + y, 'Kommentar', 'gemeldet am'])];
+  eMelds.slice().sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(m => a2.push([m.name].concat(sh.map(s => isDecl(m) ? 'abgesagt' : (m.s || {})[s.id] && isTask(s) ? 'macht' : (m.s || {})[s.id] === 'w' ? 'Wunsch' : (m.s || {})[s.id] === 'a' ? 'geht auch' : '')).concat([m.max || 'egal', openFor(m.uid, y), m.note || '', m.t ? new Date(m.t).toLocaleString('de-DE') : ''])));
   const wb = XLSX.utils.book_new(), w1 = XLSX.utils.aoa_to_sheet(a1), w2 = XLSX.utils.aoa_to_sheet(a2);
   w1['!cols'] = [{ wch: 18 }, { wch: 8 }, { wch: 9 }, { wch: 10 }, { wch: 45 }, { wch: 30 }];
   w2['!cols'] = [{ wch: 22 }].concat(sh.map(() => ({ wch: 12 }))).concat([{ wch: 12 }, { wch: 14 }, { wch: 30 }, { wch: 18 }]);
@@ -1995,18 +2004,29 @@ function einsForm() {
   r2.append(c3, c4); card.append(r2);
   card.append(el('h3', 'eh3', 'Schichten'));
   d.shifts.forEach((s, i) => {
-    const r = el('div', 'eshform');
-    const tf = el('input'); tf.type = 'time'; tf.value = s.from; tf.oninput = () => { s.from = tf.value; };
-    const tt = el('input'); tt.type = 'time'; tt.value = s.to; tt.oninput = () => { s.to = tt.value; };
-    const nn = el('input'); nn.inputMode = 'numeric'; nn.value = s.need; nn.title = 'Personen'; nn.oninput = () => { s.need = Math.max(0, Math.min(50, parseInt(nn.value, 10) || 0)); };
-    const x = el('button', 'ic', '🗑'); x.setAttribute('aria-label', 'Schicht entfernen'); x.disabled = d.shifts.length < 2;
+    const T = isTask(s), r = el('div', 'eshform' + (T ? ' task' : ''));
+    const nn = el('input'); nn.inputMode = 'numeric'; nn.value = s.need; nn.title = T ? 'Anzahl' : 'Personen'; nn.oninput = () => { s.need = Math.max(0, Math.min(50, parseInt(nn.value, 10) || 0)); };
+    const x = el('button', 'ic', '🗑'); x.setAttribute('aria-label', T ? 'Aufgabe entfernen' : 'Schicht entfernen'); x.disabled = d.shifts.length < 2;
     x.onclick = () => { d.shifts.splice(i, 1); renderEins(); };
-    const top = el('div', 'eshrow'); top.append(tf, el('span', null, '–'), tt, el('span', 'mut', 'Pers.'), nn, x);
-    const no = el('input'); no.maxLength = 80; no.placeholder = 'Hinweis, z. B. inkl. Aufbau'; no.value = s.note || ''; no.oninput = () => { s.note = no.value; };
+    const top = el('div', 'eshrow');
+    if (T) {
+      const ti = el('input', 'ttl'); ti.maxLength = 40; ti.value = s.title || ''; ti.placeholder = 'z. B. Kuchen backen'; ti.oninput = () => { s.title = ti.value; };
+      const hi = el('input'); hi.inputMode = 'decimal'; hi.value = String(s.h == null ? '' : s.h).replace('.', ','); hi.title = 'Stunden je Person';
+      hi.oninput = () => { const v = parseFloat(hi.value.replace(',', '.')); s.h = v > 0 && v <= 24 ? round2(v) : 0; };
+      const tr = el('div', 'eshrow'); tr.append(el('span', null, '🎂'), ti); r.append(tr);
+      top.append(el('span', 'mut', 'Std. je Person'), hi, el('span', 'mut', 'Anzahl'), nn, el('span', 'grow'), x); top.style.marginTop = '6px';
+    } else {
+      const tf = el('input'); tf.type = 'time'; tf.value = s.from; tf.oninput = () => { s.from = tf.value; };
+      const tt = el('input'); tt.type = 'time'; tt.value = s.to; tt.oninput = () => { s.to = tt.value; };
+      top.append(tf, el('span', null, '–'), tt, el('span', 'mut', 'Pers.'), nn, x);
+    }
+    const no = el('input'); no.maxLength = 80; no.placeholder = T ? 'Hinweis, z. B. bis 10 Uhr am Stand abgeben' : 'Hinweis, z. B. inkl. Aufbau'; no.value = s.note || ''; no.oninput = () => { s.note = no.value; };
     r.append(top, no); card.append(r);
   });
-  const add = el('button', 'btn sec', '+ Schicht'); add.onclick = () => { const l = d.shifts[d.shifts.length - 1]; d.shifts.push({ id: sid(), from: l ? l.to : '10:00', to: '', need: 2, note: '' }); renderEins(); };
-  card.append(add);
+  const add = el('button', 'btn sec', '+ Schicht'); add.onclick = () => { const l = d.shifts.filter(x => !isTask(x)).pop(); d.shifts.push({ id: sid(), from: l ? l.to : '10:00', to: '', need: 2, note: '' }); renderEins(); };
+  const addT = el('button', 'btn sec', '+ 🎂 Kuchen / Aufgabe ohne Uhrzeit'); addT.onclick = () => { d.shifts.push({ id: sid(), kind: 'task', title: 'Kuchen backen', h: 2, need: 3, note: '' }); renderEins(); };
+  card.append(el('small', 'mut', 'Aufgaben ohne Uhrzeit (z. B. Kuchen backen) zählen pro Person mit festen Stunden – nicht als Schicht und ohne Zeitkonflikt.'));
+  card.append(add, addT);
   const cb = (label, key) => { const l = el('label', 'chk'), c = el('input'); c.type = 'checkbox'; c.checked = !!d[key]; c.onchange = () => { d[key] = c.checked; }; l.append(c, el('span', null, label)); card.append(l); };
   cb('Mitglieder sehen die Namen der Gemeldeten (sonst nur die Anzahl)', 'showNames');
   const pn = el('label', 'chk'), pc = el('input'); pc.type = 'checkbox'; pc.checked = d.prefNeed !== false; pc.onchange = () => { d.prefNeed = pc.checked; };
@@ -2020,8 +2040,12 @@ function einsSave(d) {
   const title = String(d.title || '').trim();
   if (!title) { toast('Bitte einen Titel eingeben.'); return; }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) { toast('Bitte ein Datum wählen.'); return; }
-  const sh = d.shifts.map(s => ({ id: s.id || sid(), from: s.from, to: s.to, need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) }));
-  if (!sh.length || sh.some(s => !shSpan(s))) { toast('Bitte bei jeder Schicht Beginn und Ende eintragen.'); return; }
+  const sh = d.shifts.map(s => isTask(s)
+    ? { id: s.id || sid(), kind: 'task', title: String(s.title || '').trim().slice(0, 40), h: round2(+s.h || 0), need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) }
+    : { id: s.id || sid(), from: s.from, to: s.to, need: +s.need || 0, note: String(s.note || '').trim().slice(0, 80) });
+  if (!sh.length) { toast('Bitte mindestens eine Schicht oder Aufgabe anlegen.'); return; }
+  if (sh.some(s => !isTask(s) && !shSpan(s))) { toast('Bitte bei jeder Schicht Beginn und Ende eintragen.'); return; }
+  if (sh.some(s => isTask(s) && (!s.title || !(s.h > 0 && s.h <= 24)))) { toast('Bitte bei jeder Aufgabe Bezeichnung und Stunden (über 0 bis 24) eintragen.'); return; }
   if (!(d.dl > 0)) { toast('Bitte einen Anmeldeschluss eintragen.'); return; }
   const now = Date.now();
   const v = { title: title.slice(0, 80), date: d.date, place: String(d.place || '').trim().slice(0, 80), desc: String(d.desc || '').trim().slice(0, 800), dl: d.dl, shifts: sh, showNames: !!d.showNames, prefNeed: d.prefNeed !== false, tu: now };
