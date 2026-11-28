@@ -18,10 +18,10 @@
 })();
 </script>
 <meta name="format-detection" content="telephone=no" />
-<link rel="manifest" href="./manifest.webmanifest?v=1.3.5" />
-<link rel="icon" href="./icon.svg?v=4" type="image/svg+xml" />
-<link rel="icon" href="./favicon-32.png?v=4" sizes="32x32" type="image/png" />
-<link rel="apple-touch-icon" href="./apple-touch-icon.png?v=4" />
+<link rel="manifest" href="./manifest.webmanifest?v=1.3.6" />
+<link rel="icon" href="./icon.svg?v=5" type="image/svg+xml" />
+<link rel="icon" href="./favicon-32.png?v=5" sizes="32x32" type="image/png" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png?v=5" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&display=swap" rel="stylesheet" />
@@ -383,7 +383,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.11.4';
+const APP_VERSION = '1.11.5';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -544,13 +544,13 @@ async function initFirebase() {
 function syncRows() {
   const key = access() === 'ok' ? (canAll() ? 'all' : 'mine') + ':' + S.user.uid : '';
   if (key === rowsKey) return;
-  DATA_L.forEach(stopL); rowsKey = key; Object.assign(S, { rows: [], cfg: null, soll: [], inv: [], rem: [] });
+  DATA_L.forEach(stopL); rowsKey = key; Object.assign(S, { rows: [], rowsAll: false, cfg: null, soll: [], inv: [], rem: [] });
   if (!key) { stopEins(); return; }
   stopEins(); startEinsListeners();
   // Mitglieder lesen nur eigene Dokumente, Vorstand und Admins alle
   const q = name => canAll() ? F.collection(db, name) : F.query(F.collection(db, name), F.where('uid', '==', S.user.uid));
   const docs = snap => snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
-  unsub.rows = F.onSnapshot(q('stunden'), snap => { S.rows = docs(snap); S.dbError = ''; render(); if (!snap.metadata || !snap.metadata.fromCache) syncMyNames(); }, fail('Stunden'));
+  rowsListen();
   unsub.cfg = F.onSnapshot(F.doc(db, 'stdcfg', 'main'), snap => { S.cfg = snap.exists() ? snap.data() : {}; render(); }, fail('Einstellungen'));
   unsub.soll = F.onSnapshot(q('stdsoll'), snap => { S.soll = docs(snap); render(); }, fail('Soll'));
   unsub.inv = F.onSnapshot(q('stdinv'), snap => { S.inv = docs(snap); render(); }, fail('Rechnungen'));
@@ -565,7 +565,37 @@ function syncUsers() {
 }
 
 /* ---------- Anzeige ---------- */
+/* Stunden: Vorstand und Admins laden zuerst nur ab 1. Januar des Vorjahres (die Liste wächst sonst jedes Jahr);
+   ältere Einträge auf Wunsch und automatisch vor Backup, Löschen und Excel-Export */
+const rowsCutoff = () => (new Date().getFullYear() - 1) + '-01-01';
+let rowsWait = [];
+function rowsListen() {
+  stopL('rows');
+  const col = F.collection(db, 'stunden');
+  const qq = !canAll() ? F.query(col, F.where('uid', '==', S.user.uid)) : S.rowsAll ? col : F.query(col, F.where('datum', '>=', rowsCutoff()));
+  unsub.rows = F.onSnapshot(qq, snap => {
+    S.rows = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); S.dbError = '';
+    const server = !snap.metadata || !snap.metadata.fromCache;
+    if (server && S.rowsAll && rowsWait.length) { rowsWait.forEach(f => f()); rowsWait = []; }
+    render(); if (server) syncMyNames();
+  }, fail('Stunden'));
+}
+// lädt alle Stunden (auch ältere Jahre) und wartet, bis der Server sie vollständig geliefert hat
+function ensureAllRows() {
+  if (!canAll() || (S.rowsAll && !rowsWait.length)) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const t = setTimeout(() => { rowsWait = rowsWait.filter(f => f !== ok); rej(new Error('timeout')); }, 20000);
+    const ok = () => { clearTimeout(t); res(); };
+    rowsWait.push(ok);
+    if (!S.rowsAll) { S.rowsAll = true; toast('Ältere Einträge werden geladen …'); rowsListen(); }
+  });
+}
+async function needAllRows() {
+  try { await ensureAllRows(); return true; }
+  catch (e) { toast('Ältere Einträge konnten nicht geladen werden – Internetverbindung prüfen. Es wurde nichts ausgeführt.'); return false; }
+}
 function setView(v) {
+  if (v === 'data' && canAll() && !S.rowsAll) ensureAllRows().catch(() => {});
   if (v === 'eins' && S.view !== 'eins') eEdit = null;
   if (v === 'new') ckClean();
   S.view = v; syncUsers(); render(); window.scrollTo(0, 0);
@@ -616,6 +646,7 @@ function renderList() {
   const tot = rows.filter(isOk).reduce((s, e) => s + e.stunden, 0), wait = rows.filter(e => stOf(e) === 'offen').reduce((s, e) => s + e.stunden, 0);
   $('sum').textContent = (canAll() && !m ? 'Alle Mitglieder: ' : 'Summe: ') + nf(tot) + ' Std. genehmigt' + (wait ? ' (+' + nf(wait) + ' wartend)' : '') + ' · ' + rows.length + (rows.length === 1 ? ' Eintrag' : ' Einträge');
   const box = $('list'); box.replaceChildren();
+  if (canAll() && !S.rowsAll) { const b = el('button', 'btn sec', 'Einträge vor ' + rowsCutoff().slice(0, 4) + ' laden'); b.onclick = () => ensureAllRows().catch(() => toast('Ältere Einträge konnten nicht geladen werden.')); box.append(b); }
   if (!rows.length) { box.append(el('p', 'mut', 'Noch keine Einträge.')); return; }
   const sums = {}; rows.forEach(e => { const k = e.datum.slice(0, 7); sums[k] = (sums[k] || 0) + (isOk(e) ? e.stunden : 0); });
   let cur = '';
@@ -892,6 +923,7 @@ function download(name, data, mime) {
   catch (e) { toast('Speichern nicht möglich.'); return false; }
 }
 $('bx').onclick = async () => {
+  if (!(await needAllRows())) return;
   const y = $('xjahr').value;
   const rows = S.rows.filter(e => !y || e.datum.indexOf(y) === 0).sort((a, b) => a.datum.localeCompare(b.datum) || (a.name || '').localeCompare(b.name || '', 'de'));
   if (!rows.length) { toast('Keine Einträge zum Exportieren.'); return; }
@@ -1315,9 +1347,10 @@ function backupFile(sel, y) {
   Object.keys(sel).forEach(k => { data[k] = stripId(sel[k]); });
   return download('stundentracker-vollbackup-' + todayISO() + (y ? '-' + y : '') + '.json', JSON.stringify(data, null, 2), 'application/json');
 }
-$('bakAll').onclick = () => { if (backupFile(delSelection('', { std: 1, rem: 1, inv: 1, soll: 1, cfg: 1 }), '')) toast('Backup heruntergeladen.'); };
+$('bakAll').onclick = async () => { if (!(await needAllRows())) return; if (backupFile(delSelection('', { std: 1, rem: 1, inv: 1, soll: 1, cfg: 1 }), '')) toast('Backup heruntergeladen.'); };
 $('delBtn').onclick = async () => {
   if (!S.isSuper) return;
+  if (!(await needAllRows())) return;
   const y = $('delYear').value;
   const which = { std: $('delStd').checked, rem: $('delRem').checked, inv: $('delInv').checked, soll: $('delSoll').checked, cfg: $('delCfg').checked };
   const sel = delSelection(y, which);
