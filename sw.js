@@ -1,5 +1,5 @@
 // Bei jeder Änderung der App hier VERSION und in index.html APP_VERSION hochzählen
-const VERSION = '1.11.3';
+const VERSION = '1.11.4';
 const C = 'stundentracker-' + VERSION;
 const HOSTS = ['www.gstatic.com', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const SHELL = ['./', './index.html', './manifest.webmanifest?v=1.3.5', './icon.svg?v=4', './icon-192.png?v=4', './icon-512.png?v=4', './maskable-192.png?v=4', './maskable-512.png?v=4', './apple-touch-icon.png?v=4', './favicon-32.png?v=4'];

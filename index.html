@@ -383,7 +383,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.11.3';
+const APP_VERSION = '1.11.4';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -411,7 +411,7 @@ applyTheme();
 function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
 
 /* ---------- Zustand ---------- */
-const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], einsOk: null, eins: [], boards: {}, myMelds: [], allMelds: [], einsSel: null, view: 'new', editId: null, registering: false, dbError: '' };
+const S = { user: null, meDoc: null, meLoaded: false, roleChecked: false, isSuper: false, rows: [], users: [], cfg: null, soll: [], inv: [], rem: [], einsOk: null, eins: [], boards: {}, myMelds: [], allMelds: [], einsAll: false, einsSel: null, view: 'new', editId: null, registering: false, dbError: '' };
 let F = {}, db, auth, rowsKey = '';
 const unsub = { me: null, rows: null, users: null, cfg: null, soll: null, inv: null, rem: null, apps: null, eins: null, boards: null, myMeld: null, melds: null, eusers: null };
 const DATA_L = ['rows', 'cfg', 'soll', 'inv', 'rem'];
@@ -1548,37 +1548,48 @@ const credUid = id => isGuest(id) ? ((guestOf(id) || {}).uid || '') : id;
 // Nachmelden: Plan veröffentlicht, Einsatz noch nicht vorbei und nicht abgerechnet
 const eLate = e => !!e.planPub && !e.done && !ePast(e);
 // offene Nachmeldungen: nachgemeldet, aber (noch) nicht in dieser Schicht eingeteilt
-const lateFor = e => { if (!eLate(e)) return []; const out = []; const ms = S.einsSel === e.id && eMelds.length ? eMelds : S.allMelds.filter(m => m.eid === e.id);
+const lateFor = e => { if (!eLate(e)) return []; const out = []; const ms = S.allMelds.filter(m => m.eid === e.id);
   ms.forEach(m => Object.keys(m.nach || {}).forEach(sid => { const s = (e.shifts || []).find(x => x.id === sid); if (s && !(((e.plan || {})[sid]) || []).includes(m.uid)) out.push({ m, s }); })); return out; };
 const shOpen = (e, s) => ((e.plan || {})[s.id] || []).length < (+s.need || 0);
 const eNeedsMe = e => eOpen(e) && !myMeld(e.id);
 
+// Einsätze ab 1. Januar des Vorjahres laden (für Pflichtstunden und Abrechnung reicht das); ältere nur auf Wunsch
+const einsCutoff = () => (new Date().getFullYear() - 1) + '-01-01';
 function startEinsListeners() {
   if (unsub.eins) return;
   const deny = err => { if (err && err.code === 'permission-denied') { S.einsOk = false; stopEins(); render(); } else console.warn('Einsätze', err); };
-  unsub.eins = F.onSnapshot(F.collection(db, 'einsaetze'), snap => {
+  const col = F.collection(db, 'einsaetze');
+  unsub.eins = F.onSnapshot(S.einsAll ? col : F.query(col, F.where('date', '>=', einsCutoff())), snap => {
     S.einsOk = true; S.eins = snap.docs.map(d => Object.assign({ id: d.id }, d.data())).sort((a, b) => a.date.localeCompare(b.date)); render();
   }, deny);
-  unsub.boards = F.onSnapshot(F.collection(db, 'einsatzBoard'), snap => { S.boards = {}; snap.docs.forEach(d => { S.boards[d.id] = d.data(); }); render(); }, deny);
   unsub.myMeld = F.onSnapshot(F.query(F.collection(db, 'einsatzMeld'), F.where('uid', '==', S.user.uid)), snap => {
     S.myMelds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
   }, deny);
 }
-function stopEins() { ['eins', 'boards', 'myMeld', 'melds', 'eusers', 'allMeld'].forEach(stopL); S.allMelds = []; eMeldsFor = null; }
+function einsLoadAll() { S.einsAll = true; stopL('eins'); startEinsListeners(); }
+function stopEins() { ['eins', 'boards', 'myMeld', 'melds', 'eusers'].forEach(stopL); S.allMelds = []; S.boards = {}; eMeldsFor = null; bFor = null; }
+let bFor = null;   // Schlüssel der aktuell beobachteten Zählübersichten / Meldungen
 function syncMelds() {
-  // Planer: alle Meldungen, um offene Nachmeldungen überall anzuzeigen (Reiter, Einsatzkarte, Startseite)
-  if (S.einsOk === true && canEins() && !unsub.allMeld) unsub.allMeld = F.onSnapshot(F.collection(db, 'einsatzMeld'), snap => {
-    S.allMelds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
-  }, err => console.warn('Nachmeldungen', err));
-  const id = S.view === 'eins' && canEins() ? S.einsSel : null;
-  if (id === eMeldsFor) return;
-  stopL('melds'); eMeldsFor = id; eMelds = [];
-  if (!id) stopL('eusers');
-  if (id) unsub.melds = F.onSnapshot(F.query(F.collection(db, 'einsatzMeld'), F.where('eid', '==', id)), snap => {
-    eMelds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
-  }, err => console.warn('Meldungen', err));
+  if (S.einsOk !== true) return;
+  // Zählübersichten nur für kommende Einsätze (dort werden Anmeldungen gezählt); höchstens 30 je Abfrage
+  const bIds = S.eins.filter(e => !ePast(e)).map(e => e.id).slice(-30).sort(), bKey = bIds.join(',');
+  if (bKey !== bFor) {
+    stopL('boards'); bFor = bKey; S.boards = {};
+    if (bIds.length) unsub.boards = F.onSnapshot(F.query(F.collection(db, 'einsatzBoard'), F.where(F.documentId(), 'in', bIds)), snap => { S.boards = {}; snap.docs.forEach(d => { S.boards[d.id] = d.data(); }); render(); }, err => console.warn('Übersicht', err));
+  }
+  // Planer: Meldungen nur für den geöffneten Einsatz und für Einsätze, bei denen nachgemeldet werden kann – eine gemeinsame Abfrage
+  const sel = S.view === 'eins' && canEins() ? S.einsSel : null;
+  const mIds = canEins() ? [...new Set([sel].concat(S.eins.filter(eLate).map(e => e.id)).filter(Boolean))].slice(0, 30).sort() : [];
+  const mKey = mIds.join(',');
+  if (mKey !== eMeldsFor) {
+    stopL('melds'); eMeldsFor = mKey; S.allMelds = []; eMelds = [];
+    if (mIds.length) unsub.melds = F.onSnapshot(F.query(F.collection(db, 'einsatzMeld'), F.where('eid', 'in', mIds)), snap => {
+      S.allMelds = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); eMelds = S.allMelds.filter(m => m.eid === S.einsSel); render();
+    }, err => console.warn('Meldungen', err));
+  } else eMelds = S.allMelds.filter(m => m.eid === sel);
+  if (!sel) stopL('eusers');
   // Mitgliederliste (Namen, wer noch Stunden braucht) – Admins laden sie in syncUsers, der Vorstand hier
-  if (id && !unsub.users && !unsub.eusers) unsub.eusers = F.onSnapshot(F.collection(db, 'users'), snap => {
+  if (sel && !unsub.users && !unsub.eusers) unsub.eusers = F.onSnapshot(F.collection(db, 'users'), snap => {
     S.users = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); render();
   }, err => console.warn('Mitglieder (Einsätze)', err));
 }
@@ -1618,9 +1629,11 @@ function renderEins() {
   const up = S.eins.filter(e => !ePast(e)), past = S.eins.filter(ePast).reverse();
   if (!up.length) v.append(el('p', 'mut', 'Zurzeit sind keine Einsätze geplant.'));
   up.forEach(e => v.append(einsCard(e)));
-  if (past.length) {
-    const d = el('details', 'card'); d.append(el('summary', null, 'Vergangene Einsätze (' + past.length + ')'));
-    past.forEach(e => d.append(einsCard(e))); v.append(d);
+  if (past.length || !S.einsAll) {
+    const d = el('details', 'card'); d.append(el('summary', null, 'Vergangene Einsätze (' + past.length + (S.einsAll ? '' : ' seit ' + einsCutoff().slice(0, 4)) + ')'));
+    past.forEach(e => d.append(einsCard(e)));
+    if (!S.einsAll) { const b = el('button', 'btn sec', 'Ältere Einsätze laden'); b.onclick = einsLoadAll; d.append(b); }
+    v.append(d);
   }
 }
 function einsCard(e) {
