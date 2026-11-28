@@ -365,7 +365,6 @@ details.msg>summary::after{content:'▾';color:var(--mu);flex:none}details.msg[o
 <div class="modal" id="modal" hidden><div><p id="mt" style="margin-top:0;white-space:pre-line"></p><input id="mi" hidden style="margin-bottom:10px"><textarea id="mta" hidden style="margin-bottom:10px;min-height:170px"></textarea><div id="mb"></div></div></div>
 <div id="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
 /* =========================================================
    KONFIGURATION – dieselbe Firebase-Web-App wie die Getränke-Strichliste,
@@ -384,7 +383,7 @@ const FB = 'https://www.gstatic.com/firebasejs/13.4.0/';
 /* ========================================================= */
 
 // Bei jeder Änderung hier und in sw.js (VERSION) hochzählen
-const APP_VERSION = '1.11.2';
+const APP_VERSION = '1.11.3';
 
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -878,15 +877,25 @@ $('pwBtn').onclick = async () => {
 };
 
 /* ---------- Export / Backup ---------- */
+// Excel-Bibliothek (ca. 880 KB) erst beim ersten Export laden – nicht beim Start der App
+let xlsxP = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!xlsxP) xlsxP = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => res(window.XLSX); s.onerror = () => { xlsxP = null; s.remove(); rej(new Error('xlsx')); }; document.head.append(s);
+  });
+  return xlsxP;
+}
 function download(name, data, mime) {
   try { const u = URL.createObjectURL(new Blob([data], { type: mime })), a = document.createElement('a'); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return true; }
   catch (e) { toast('Speichern nicht möglich.'); return false; }
 }
-$('bx').onclick = () => {
+$('bx').onclick = async () => {
   const y = $('xjahr').value;
   const rows = S.rows.filter(e => !y || e.datum.indexOf(y) === 0).sort((a, b) => a.datum.localeCompare(b.datum) || (a.name || '').localeCompare(b.name || '', 'de'));
   if (!rows.length) { toast('Keine Einträge zum Exportieren.'); return; }
-  if (!window.XLSX) { toast('Excel-Bibliothek konnte nicht geladen werden.'); return; }
+  if (!window.XLSX) { try { toast('Excel wird vorbereitet …'); await loadXLSX(); } catch (err) { toast('Excel-Bibliothek konnte nicht geladen werden – Internetverbindung prüfen.'); return; } }
   const ST = { ok: 'genehmigt', offen: 'wartend', abgelehnt: 'abgelehnt' };
   const aoa = [['Datum', 'Name', 'Tätigkeit', 'Stunden', 'Status', 'Entschieden von', 'Entschieden am', 'Notiz', 'Ablehnungsgrund']], per = {}; let tot = 0;
   rows.forEach(e => {
@@ -2126,8 +2135,8 @@ async function einsShare(e) {
     '\n\nDie optimale Möglichkeit, euer Stundenkonto zu verbessern. Meldet euch bis ' + dlText(e.dl) + ' in WexStunden mit Wunsch- und Ausweichschicht:\n' + EINS_URL + '?e=' + e.id;
   return einsShareText(txt);
 }
-function einsExcel(e) {
-  if (!window.XLSX) { toast('Excel-Bibliothek konnte nicht geladen werden.'); return; }
+async function einsExcel(e) {
+  if (!window.XLSX) { try { toast('Excel wird vorbereitet …'); await loadXLSX(); } catch (err) { toast('Excel-Bibliothek konnte nicht geladen werden – Internetverbindung prüfen.'); return; } }
   const sh = e.shifts || [], y = e.date.slice(0, 4), plan = PD[e.id] || e.plan || {};
   const a1 = [[e.title + ' – ' + wdate(e.date) + (e.place ? ' – ' + e.place : '')], [], ['Schicht', 'Stunden', 'Benötigt', 'Eingeteilt', 'Personen', 'Hinweis']];
   sh.forEach(s => a1.push([shLabel(s), shHours(s), +s.need || 0, (plan[s.id] || []).length, (plan[s.id] || []).map(uName).join(', '), s.note || '']));
